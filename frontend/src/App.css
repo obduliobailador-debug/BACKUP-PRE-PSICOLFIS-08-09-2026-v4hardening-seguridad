@@ -191,34 +191,35 @@ body {
 }
 
 .promo-title {
-  font-size: 48px;
+  font-size: 32px;
   font-weight: bold;
   color: #3b82f6;
   text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-  letter-spacing: 3px;
+  letter-spacing: 2px;
 }
 
 .promo-subtitle {
   text-align: center;
-  font-size: 24px;
+  font-size: 16px;
   margin-bottom: 10px;
   color: #94a3b8;
 }
 
 .promo-description {
   text-align: center;
-  font-size: 22px;
+  font-size: 15px;
   font-weight: 600;
   margin-bottom: 30px;
   color: #ffffff;
-  max-width: 800px;
+  max-width: 680px;
   margin-left: auto;
   margin-right: auto;
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%);
-  padding: 15px 25px;
+  padding: 12px 22px;
   border-radius: 12px;
   border: 1px solid rgba(59, 130, 246, 0.5);
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  line-height: 1.5;
 }
 
 /* Countdown Timer */
@@ -313,7 +314,7 @@ body {
 .agent-video-container {
   position: relative;
   width: 100%;
-  height: 300px;
+  height: 220px;
   border-radius: 15px;
   overflow: hidden;
   margin-bottom: 15px;
