@@ -55,6 +55,48 @@ const useScrollReveal = () => {
   }, []);
 };
 
+// Set/update per-route <title>, <meta description>, canonical and robots
+const setMetaTag = (selector, attr, value) => {
+  let tag = document.head.querySelector(selector);
+  if (!tag) {
+    tag = document.createElement('meta');
+    const [name, val] = selector.replace(/^meta\[|\]$/g, '').split('=');
+    tag.setAttribute(name, val.replace(/['"]/g, ''));
+    document.head.appendChild(tag);
+  }
+  tag.setAttribute(attr, value);
+};
+
+const usePageSeo = ({ title, description, canonicalPath, noindex = false }) => {
+  useEffect(() => {
+    if (title) document.title = title;
+    if (description) {
+      setMetaTag('meta[name="description"]', 'content', description);
+      setMetaTag('meta[property="og:description"]', 'content', description);
+      setMetaTag('meta[name="twitter:description"]', 'content', description);
+    }
+    if (title) {
+      setMetaTag('meta[property="og:title"]', 'content', title);
+      setMetaTag('meta[name="twitter:title"]', 'content', title);
+    }
+    if (canonicalPath) {
+      let link = document.head.querySelector('link[rel="canonical"]');
+      if (!link) {
+        link = document.createElement('link');
+        link.setAttribute('rel', 'canonical');
+        document.head.appendChild(link);
+      }
+      link.setAttribute('href', `https://psicolfis.net${canonicalPath}`);
+      setMetaTag('meta[property="og:url"]', 'content', `https://psicolfis.net${canonicalPath}`);
+    }
+    setMetaTag(
+      'meta[name="robots"]',
+      'content',
+      noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1'
+    );
+  }, [title, description, canonicalPath, noindex]);
+};
+
 const agents = [
   {
     id: "iris",
@@ -132,6 +174,11 @@ const faqData = [
 
 const Home = () => {
   useScrollReveal();
+  usePageSeo({
+    title: 'PSICOLFIS.NET · Agentes de IA personalizados para tu negocio',
+    description: 'Agentes de IA creados a medida para autónomos y pequeños negocios. Automatiza atención, contenido y ventas con IRIS, ALEX y UMBRAL. Resultados en 5-10 días.',
+    canonicalPath: '/',
+  });
   const [showModal, setShowModal] = useState(true); // Popup activado
   const [timeLeft, setTimeLeft] = useState(15);
   const [loading, setLoading] = useState({});
@@ -308,6 +355,9 @@ const Home = () => {
                     </div>
                     <p className="agent-description">{agent.description}</p>
                     <div className="agent-price">{agent.price}</div>
+                    <div className="agent-offer-note" data-testid={`agent-offer-note-${agent.id}`}>
+                      Oferta limitada · solo demostración real
+                    </div>
                     <button
                       className="buy-button"
                       onClick={() => handlePurchase(agent.id)}
@@ -363,7 +413,14 @@ const Home = () => {
         <section className="hero-section">
           <div className="hero-content">
             <div className="hero-logo-box">
-              <img src="https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png" alt="PSICOLFIS" className="hero-logo" />
+              <img
+                src="https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png"
+                alt="Logo PSICOLFIS.NET - Agentes de IA personalizados"
+                className="hero-logo"
+                width="360"
+                height="150"
+                fetchpriority="high"
+              />
             </div>
             
             <h1 className="hero-title">
@@ -412,7 +469,13 @@ const Home = () => {
             <p className="section-subtitle reveal">Tu conocimiento convertido en una herramienta que trabaja por ti, 24/7</p>
             
             <div className="transformation-image-large reveal">
-              <img src="https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/jd1bv0v9_Imagen%20de%20antes%20y%20despues.jpeg" alt="Transformación" />
+              <img
+                src="https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/jd1bv0v9_Imagen%20de%20antes%20y%20despues.jpeg"
+                alt="Comparativa antes y después: de tareas manuales a automatización con agentes de IA"
+                loading="lazy"
+                width="1200"
+                height="600"
+              />
             </div>
             
             <div className="transformation-comparison">
@@ -928,7 +991,14 @@ const Home = () => {
           <div className="footer-container">
             <div className="footer-content">
               <div className="footer-brand">
-                <img src="https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png" alt="PSICOLFIS" className="footer-logo" />
+                <img
+                  src="https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png"
+                  alt="Logo PSICOLFIS.NET"
+                  className="footer-logo"
+                  loading="lazy"
+                  width="200"
+                  height="80"
+                />
                 <p className="footer-description">
                   IA con propósito. Agentes que multiplican tu impacto.
                 </p>
@@ -1010,6 +1080,12 @@ const Home = () => {
 };
 
 const SuccessPage = () => {
+  usePageSeo({
+    title: 'Pago confirmado · PSICOLFIS.NET',
+    description: 'Gracias por tu compra. Tu agente de IA estará listo en breve.',
+    canonicalPath: '/success',
+    noindex: true,
+  });
   const [searchParams] = useSearchParams();
   const [paymentStatus, setPaymentStatus] = useState('checking');
   const [statusMessage, setStatusMessage] = useState('Verificando pago...');
@@ -1073,6 +1149,12 @@ const SuccessPage = () => {
 };
 
 const CancelPage = () => {
+  usePageSeo({
+    title: 'Pago cancelado · PSICOLFIS.NET',
+    description: 'Has cancelado el proceso de pago. Puedes volver cuando quieras.',
+    canonicalPath: '/cancel',
+    noindex: true,
+  });
   return (
     <div className="status-page">
       <div className="status-card">
@@ -1087,6 +1169,11 @@ const CancelPage = () => {
 
 // Página de Agentes (clon exacto de config-recovery-1)
 const AgentesPage = () => {
+  usePageSeo({
+    title: 'Agentes de IA: IRIS, ALEX y UMBRAL · PSICOLFIS.NET',
+    description: 'Conoce a IRIS, ALEX y UMBRAL: tres agentes de IA personalizados para vida digital, trabajo y bienestar. Desde 50€ en demostración real con disponibilidad limitada.',
+    canonicalPath: '/agentes',
+  });
   const [loading, setLoading] = useState({});
   const [legalOpen, setLegalOpen] = useState(false);
 
@@ -1173,7 +1260,10 @@ const AgentesPage = () => {
                 <h3 className="agente-name-v2">{agent.name}</h3>
                 <p className="agente-description-v2">{agent.description}</p>
                 <div className="agente-footer-v2">
-                  <span className="agente-price-v2">{agent.price}</span>
+                  <div className="agente-price-wrap-v2">
+                    <span className="agente-price-v2">{agent.price}</span>
+                    <span className="agente-offer-note-v2">Oferta limitada · solo demostración real</span>
+                  </div>
                   <button
                     className="agente-buy-btn-v2"
                     onClick={() => handleBuyAgent(agent.id)}
@@ -1277,6 +1367,11 @@ const AgentesPage = () => {
 };
 
 const LegalPage = () => {
+  usePageSeo({
+    title: 'Aviso Legal y Política de Privacidad · PSICOLFIS.NET',
+    description: 'Información legal, política de privacidad y uso de cookies de PSICOLFIS.NET — servicio de agentes de IA personalizados.',
+    canonicalPath: '/legal',
+  });
   return (
     <div className="legal-page">
       <div className="legal-container">

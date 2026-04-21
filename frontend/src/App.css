@@ -386,7 +386,23 @@ body {
   font-weight: bold;
   color: #4ade80;
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 6px;
+}
+
+.agent-offer-note {
+  text-align: center;
+  color: #fbbf24;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  margin: 0 auto 18px auto;
+  padding: 4px 10px;
+  border: 1px dashed rgba(251, 191, 36, 0.5);
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.08);
+  width: fit-content;
+  max-width: 90%;
 }
 
 /* Buy Button */
@@ -3020,6 +3036,26 @@ body {
   font-size: 36px;
   font-weight: 700;
   color: #1f2937;
+}
+
+.agente-price-wrap-v2 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.agente-offer-note-v2 {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px dashed #f59e0b;
+  padding: 3px 9px;
+  border-radius: 999px;
+  text-align: center;
 }
 
 .agente-buy-btn-v2 {

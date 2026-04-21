@@ -1,24 +1,196 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#000000" />
-        <meta name="description" content="A product of emergent.sh" />
-        <!--
-        manifest.json provides metadata used when your web app is installed on a
-        user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-        -->
-        <!--
-        Notice the use of %PUBLIC_URL% in the tags above.
-        It will be replaced with the URL of the `public` folder during the build.
-        Only files inside the `public` folder can be referenced from the HTML.
+        <meta name="theme-color" content="#0a0e27" />
 
-        Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-        work correctly both with client-side routing and a non-root public URL.
-        Learn how to configure a non-root public URL by running `npm run build`.
-        -->
-        <title>Emergent | Fullstack App</title>
+        <!-- Primary SEO -->
+        <title>PSICOLFIS.NET · Agentes de IA personalizados para tu negocio</title>
+        <meta
+            name="description"
+            content="Agentes de inteligencia artificial creados a medida para autónomos y pequeños negocios. Automatiza atención, contenido y ventas con IRIS, ALEX y UMBRAL. Resultados reales en 5-10 días."
+        />
+        <meta name="author" content="PSICOLFIS.NET — Obdulio Bailador" />
+        <meta
+            name="keywords"
+            content="agentes de IA, inteligencia artificial personalizada, automatización autónomos, chatbot negocio, IA PYMES, asistente virtual empresa, PSICOLFIS, consultoría IA España"
+        />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+        <meta name="googlebot" content="index, follow" />
+        <link rel="canonical" href="https://psicolfis.net/" />
+
+        <!-- Icons -->
+        <link
+            rel="icon"
+            type="image/png"
+            href="https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png"
+        />
+        <link
+            rel="apple-touch-icon"
+            href="https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png"
+        />
+
+        <!-- Open Graph (WhatsApp, LinkedIn, Facebook) -->
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="PSICOLFIS.NET" />
+        <meta property="og:locale" content="es_ES" />
+        <meta property="og:url" content="https://psicolfis.net/" />
+        <meta
+            property="og:title"
+            content="PSICOLFIS.NET · Agentes de IA personalizados para tu negocio"
+        />
+        <meta
+            property="og:description"
+            content="Agentes de IA creados a medida para autónomos y pequeños negocios. IRIS, ALEX y UMBRAL trabajan contigo, con tu tono y criterios, 24/7."
+        />
+        <meta
+            property="og:image"
+            content="https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png"
+        />
+        <meta property="og:image:alt" content="Logo PSICOLFIS.NET - Agentes de IA personalizados" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+
+        <!-- Twitter Card -->
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+            name="twitter:title"
+            content="PSICOLFIS.NET · Agentes de IA personalizados"
+        />
+        <meta
+            name="twitter:description"
+            content="Agentes de IA que piensan como tú. Multiplica tu productividad con IRIS, ALEX y UMBRAL."
+        />
+        <meta
+            name="twitter:image"
+            content="https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png"
+        />
+
+        <!-- Preconnect to performance-sensitive origins -->
+        <link rel="preconnect" href="https://customer-assets.emergentagent.com" crossorigin />
+        <link rel="preconnect" href="https://www.youtube.com" crossorigin />
+        <link rel="dns-prefetch" href="https://buy.stripe.com" />
+
+        <!-- JSON-LD: Organization / LocalBusiness -->
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "PSICOLFIS.NET",
+  "legalName": "PSICOLFIS, S.L.",
+  "url": "https://psicolfis.net/",
+  "logo": "https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png",
+  "image": "https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png",
+  "email": "obdulio@psicolfis.net",
+  "founder": { "@type": "Person", "name": "Obdulio Bailador" },
+  "description": "Consultoría y desarrollo de agentes de inteligencia artificial personalizados para autónomos y pequeños negocios.",
+  "areaServed": { "@type": "Country", "name": "España" },
+  "address": { "@type": "PostalAddress", "addressCountry": "ES", "addressRegion": "Zamora" },
+  "sameAs": []
+}
+        </script>
+
+        <!-- JSON-LD: FAQ -->
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "¿Qué es un agente de IA personalizado?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Es un asistente diseñado para pensar y responder con tu tono, tus criterios y tus objetivos. No es genérico: se entrena con tu forma de trabajar y representa tu negocio." } },
+    { "@type": "Question", "name": "¿Necesito conocimientos técnicos?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. Nosotros configuramos e integramos todo; tú lo usas como una herramienta diaria con nuestro soporte completo." } },
+    { "@type": "Question", "name": "¿Cuánto tarda la implementación?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Un piloto suele estar listo en 5-10 días hábiles según complejidad e integraciones necesarias." } },
+    { "@type": "Question", "name": "¿Qué tareas puede cubrir un agente?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Respuestas a clientes, redacción de contenidos, guiones de vídeo, filtrado de leads, soporte interno, emails, documentación, y muchísimo más." } },
+    { "@type": "Question", "name": "¿Cómo se entrena con mi tono?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Analizamos ejemplos de tu comunicación (textos, vídeos) y definimos una guía de estilo que el agente respeta en cada interacción." } },
+    { "@type": "Question", "name": "¿Mis datos están seguros?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Sí. Trabajamos con buenas prácticas de privacidad, solo usamos los datos estrictamente necesarios y bajo acuerdos de confidencialidad." } },
+    { "@type": "Question", "name": "¿Cumple con RGPD?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Sí, diseñamos el uso para alinearlo con RGPD/LOPDGDD. Te orientamos en cláusulas y avisos básicos necesarios." } },
+    { "@type": "Question", "name": "¿Qué diferencia hay con un chatbot genérico?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Un chatbot genérico responde sin contexto. Un agente personalizado entiende tu negocio, tu tono y tus objetivos específicos." } },
+    { "@type": "Question", "name": "¿Puedo integrarlo en mi web actual?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Sí. Podemos añadirlo como widget, iframe o vía API según tu plataforma y necesidades." } },
+    { "@type": "Question", "name": "¿Qué mantenimiento requiere?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Actualizaciones periódicas, revisión de respuestas y afinación según nuevos productos, campañas o cambios en tu negocio." } },
+    { "@type": "Question", "name": "¿Cómo medimos resultados?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Definimos KPIs (tiempo ahorrado, calidad de respuesta, conversión) y revisamos mejoras en ciclos mensuales con reportes claros." } },
+    { "@type": "Question", "name": "¿Ofrecen formación para mi equipo?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Sí. Incluimos una sesión de uso y buenas prácticas, con opciones de formación ampliada si la necesitas." } }
+  ]
+}
+        </script>
+
+        <!-- JSON-LD: Products (3 agentes) -->
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Product",
+      "name": "Agente IRIS",
+      "description": "Agente de IA personalizado para la vida digital, personal y profesional. Lúcido, empático y con criterio propio.",
+      "brand": { "@type": "Brand", "name": "PSICOLFIS.NET" },
+      "image": "https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png",
+      "offers": {
+        "@type": "Offer",
+        "url": "https://psicolfis.net/agentes",
+        "priceCurrency": "EUR",
+        "price": "50.00",
+        "availability": "https://schema.org/LimitedAvailability",
+        "description": "Demostración real - disponibilidad limitada"
+      }
+    },
+    {
+      "@type": "Product",
+      "name": "Agente ALEX",
+      "description": "Agente de IA para trabajo, finanzas y decisiones. Claridad, enfoque práctico y criterio realista.",
+      "brand": { "@type": "Brand", "name": "PSICOLFIS.NET" },
+      "image": "https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png",
+      "offers": {
+        "@type": "Offer",
+        "url": "https://psicolfis.net/agentes",
+        "priceCurrency": "EUR",
+        "price": "50.00",
+        "availability": "https://schema.org/LimitedAvailability",
+        "description": "Demostración real - disponibilidad limitada"
+      }
+    },
+    {
+      "@type": "Product",
+      "name": "Agente UMBRAL",
+      "description": "Agente de IA para personas LGTBIQ+ y acompañamiento en identidad, relaciones y decisiones.",
+      "brand": { "@type": "Brand", "name": "PSICOLFIS.NET" },
+      "image": "https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png",
+      "offers": {
+        "@type": "Offer",
+        "url": "https://psicolfis.net/agentes",
+        "priceCurrency": "EUR",
+        "price": "50.00",
+        "availability": "https://schema.org/LimitedAvailability",
+        "description": "Demostración real - disponibilidad limitada"
+      }
+    }
+  ]
+}
+        </script>
+
+        <!-- JSON-LD: WebSite + Breadcrumb -->
+        <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "PSICOLFIS.NET",
+  "url": "https://psicolfis.net/",
+  "inLanguage": "es-ES",
+  "publisher": { "@type": "Organization", "name": "PSICOLFIS.NET" }
+}
+        </script>
+
         <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
         <!--
         These two scripts have been added for the Visual Edits, please do not edit or remove them
@@ -45,7 +217,17 @@
         </script>
     </head>
     <body>
-        <noscript>You need to enable JavaScript to run this app.</noscript>
+        <noscript>
+            <div style="max-width:720px;margin:40px auto;padding:24px;font-family:Arial,sans-serif;color:#1e293b;background:#f8fafc;border-radius:12px;">
+                <h1>PSICOLFIS.NET — Agentes de IA personalizados para tu negocio</h1>
+                <p>IRIS, ALEX y UMBRAL son agentes de inteligencia artificial creados a medida
+                para autónomos y pequeños negocios en España. Automatizan tareas, generan
+                contenido, filtran leads y responden con tu tono de voz y tus criterios.</p>
+                <p>Para navegar por la web necesitas activar JavaScript. Si prefieres contactar
+                directamente, escríbenos a <a href="mailto:obdulio@psicolfis.net">obdulio@psicolfis.net</a>.</p>
+                <p><strong>Servicios:</strong> consultoría IA · implementación · formación · soporte continuo.</p>
+            </div>
+        </noscript>
         <div id="root"></div>
         <!--
       This HTML file is a template.
@@ -87,6 +269,7 @@
                 <img
                     style="width: 20px; height: 20px; margin-right: 8px"
                     src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4"
+                    alt=""
                 />
                 <p
                     style="

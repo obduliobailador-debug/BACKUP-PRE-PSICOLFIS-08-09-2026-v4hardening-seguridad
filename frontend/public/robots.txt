@@ -1,0 +1,8 @@
+# robots.txt - PSICOLFIS.NET
+User-agent: *
+Allow: /
+Disallow: /success
+Disallow: /cancel
+Disallow: /api/
+
+Sitemap: https://psicolfis.net/sitemap.xml
