@@ -1319,7 +1319,7 @@ const Home = () => {
             </div>
             
             <div className="footer-bottom">
-              <p>&copy; 2024 PSICOLFIS.NET - Todos los derechos reservados</p>
+              <p>&copy; {new Date().getFullYear()} PSICOLFIS.NET - Todos los derechos reservados</p>
               <div className="footer-legal">
                 <a href="/legal">Aviso Legal</a>
                 <span>•</span>
