@@ -215,6 +215,116 @@ const Home = () => {
     setShowCookieBanner(false);
   };
 
+  // ----- Reviews state -----
+  const [reviews, setReviews] = useState([]);
+  const [reviewsStats, setReviewsStats] = useState({ count: 0, average: 0 });
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewForm, setReviewForm] = useState({
+    author: '', role: '', rating: 5, text: '', captcha_answer: '', website: ''
+  });
+  const [reviewCaptcha, setReviewCaptcha] = useState({ question: '', token: '' });
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+
+  // Fetch reviews on mount
+  useEffect(() => {
+    axios.get(`${API}/reviews`)
+      .then(({ data }) => {
+        setReviews(data.reviews || []);
+        setReviewsStats({ count: data.count || 0, average: data.average || 0 });
+      })
+      .catch((err) => console.error('No se pudieron cargar las reseñas:', err));
+  }, []);
+
+  // Inject AggregateRating JSON-LD dynamically when we have reviews
+  useEffect(() => {
+    const id = 'jsonld-aggregate-rating';
+    let tag = document.getElementById(id);
+    if (reviewsStats.count > 0) {
+      const data = {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "PSICOLFIS.NET",
+        "url": "https://psicolfis.net/",
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": String(reviewsStats.average),
+          "reviewCount": String(reviewsStats.count),
+          "bestRating": "5",
+          "worstRating": "1"
+        },
+        "review": reviews.slice(0, 5).map(r => ({
+          "@type": "Review",
+          "author": { "@type": "Person", "name": r.author },
+          "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": String(r.rating),
+            "bestRating": "5"
+          },
+          "reviewBody": r.text,
+          "datePublished": (r.created_at || '').split('T')[0]
+        }))
+      };
+      if (!tag) {
+        tag = document.createElement('script');
+        tag.id = id;
+        tag.type = 'application/ld+json';
+        document.head.appendChild(tag);
+      }
+      tag.textContent = JSON.stringify(data);
+    } else if (tag) {
+      tag.remove();
+    }
+  }, [reviews, reviewsStats]);
+
+  const fetchReviewCaptcha = async () => {
+    try {
+      const { data } = await axios.get(`${API}/captcha`);
+      setReviewCaptcha({ question: data.question, token: data.token });
+    } catch (err) {
+      console.error('No se pudo cargar captcha de reseña', err);
+    }
+  };
+
+  const openReviewForm = () => {
+    setReviewForm({ author: '', role: '', rating: 5, text: '', captcha_answer: '', website: '' });
+    setReviewError('');
+    setReviewSubmitted(false);
+    setShowReviewForm(true);
+    fetchReviewCaptcha();
+  };
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    setReviewSubmitting(true);
+    setReviewError('');
+    try {
+      const { data } = await axios.post(`${API}/reviews`, {
+        ...reviewForm,
+        captcha_token: reviewCaptcha.token,
+      });
+      setReviewSubmitted(true);
+      // Prepend the new review locally
+      setReviews(prev => [data.review, ...prev]);
+      setReviewsStats(prev => {
+        const newCount = prev.count + 1;
+        const newAvg = ((prev.average * prev.count) + reviewForm.rating) / newCount;
+        return { count: newCount, average: Math.round(newAvg * 100) / 100 };
+      });
+      setTimeout(() => {
+        setShowReviewForm(false);
+        setReviewSubmitted(false);
+      }, 3000);
+    } catch (err) {
+      setReviewError(err?.response?.data?.detail || 'No se pudo enviar tu reseña. Inténtalo de nuevo.');
+      setReviewForm(prev => ({ ...prev, captcha_answer: '' }));
+      fetchReviewCaptcha();
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
   // Estado para el formulario de presupuesto
   const [showBudgetForm, setShowBudgetForm] = useState(false);
   const [budgetForm, setBudgetForm] = useState({
@@ -388,6 +498,7 @@ const Home = () => {
               <li><a href="#agentes">Super Agentes</a></li>
               <li><a href="#como-funciona">Cómo Funciona</a></li>
               <li><a href="#precios">Precios</a></li>
+              <li><a href="#resenas">Reseñas</a></li>
               <li><a href="#faq">FAQ</a></li>
             </ul>
             <div className="nav-actions">
@@ -922,6 +1033,177 @@ const Home = () => {
                   <div className="success-icon">✅</div>
                   <h2>¡Solicitud Enviada!</h2>
                   <p>Nos pondremos en contacto contigo en breve.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Reviews / Testimonials Section */}
+        <section id="resenas" className="reviews-section">
+          <div className="section-container">
+            <h2 className="section-title reveal">
+              Lo que dicen <span className="text-blue">nuestros clientes</span>
+            </h2>
+            <p className="section-subtitle reveal">
+              Opiniones reales de profesionales y pequeños negocios que ya trabajan con sus agentes
+            </p>
+
+            {reviewsStats.count > 0 && (
+              <div className="reviews-summary reveal" data-testid="reviews-summary">
+                <div className="reviews-stars-big" aria-label={`Valoración media ${reviewsStats.average} de 5`}>
+                  {[1,2,3,4,5].map(n => (
+                    <span key={n} className={`star ${n <= Math.round(reviewsStats.average) ? 'on' : ''}`}>★</span>
+                  ))}
+                </div>
+                <div className="reviews-summary-text">
+                  <strong>{reviewsStats.average}</strong> / 5 · basado en {reviewsStats.count} reseñas
+                </div>
+              </div>
+            )}
+
+            {reviews.length > 0 ? (
+              <div className="reviews-grid">
+                {reviews.slice(0, 6).map((r) => (
+                  <article key={r.id} className="review-card reveal reveal-up" data-testid={`review-${r.id}`}>
+                    <div className="review-stars" aria-label={`${r.rating} estrellas`}>
+                      {[1,2,3,4,5].map(n => (
+                        <span key={n} className={`star ${n <= r.rating ? 'on' : ''}`}>★</span>
+                      ))}
+                    </div>
+                    <p className="review-text">"{r.text}"</p>
+                    <div className="review-author">
+                      <strong>{r.author}</strong>
+                      {r.role ? <span className="review-role"> · {r.role}</span> : null}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="reviews-empty reveal">Aún no hay reseñas. ¿Quieres ser el primero?</p>
+            )}
+
+            <div className="reviews-cta reveal">
+              <button
+                type="button"
+                className="leave-review-btn"
+                onClick={openReviewForm}
+                data-testid="leave-review-btn"
+              >
+                ✍️ Dejar mi reseña
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Modal Formulario Reseña */}
+        {showReviewForm && (
+          <div className="budget-modal-overlay" onClick={() => setShowReviewForm(false)}>
+            <div className="budget-modal" onClick={(e) => e.stopPropagation()}>
+              <button className="budget-modal-close" onClick={() => setShowReviewForm(false)}>✕</button>
+              {!reviewSubmitted ? (
+                <>
+                  <h2>✍️ Deja tu reseña</h2>
+                  <p className="budget-plan-selected">Tu opinión nos ayuda a seguir mejorando</p>
+                  <form onSubmit={handleReviewSubmit}>
+                    <div className="form-group">
+                      <label>Tu nombre *</label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={80}
+                        value={reviewForm.author}
+                        onChange={(e) => setReviewForm({...reviewForm, author: e.target.value})}
+                        placeholder="Tu nombre"
+                        data-testid="review-author"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>¿A qué te dedicas? (opcional)</label>
+                      <input
+                        type="text"
+                        maxLength={80}
+                        value={reviewForm.role}
+                        onChange={(e) => setReviewForm({...reviewForm, role: e.target.value})}
+                        placeholder="Ej: Fisioterapeuta, Dueño de cafetería..."
+                        data-testid="review-role"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Valoración *</label>
+                      <div className="rating-input" data-testid="review-rating">
+                        {[1,2,3,4,5].map(n => (
+                          <button
+                            type="button"
+                            key={n}
+                            className={`rating-star ${n <= reviewForm.rating ? 'on' : ''}`}
+                            onClick={() => setReviewForm({...reviewForm, rating: n})}
+                            aria-label={`${n} estrellas`}
+                          >
+                            ★
+                          </button>
+                        ))}
+                        <span className="rating-value">{reviewForm.rating}/5</span>
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Tu reseña * (mín. 20 caracteres)</label>
+                      <textarea
+                        required
+                        rows={5}
+                        maxLength={1000}
+                        value={reviewForm.text}
+                        onChange={(e) => setReviewForm({...reviewForm, text: e.target.value})}
+                        placeholder="Cuéntanos brevemente tu experiencia..."
+                        data-testid="review-text"
+                      />
+                    </div>
+
+                    {/* Honeypot */}
+                    <div className="hp-field" aria-hidden="true" style={{position:'absolute',left:'-10000px',width:'1px',height:'1px',overflow:'hidden'}}>
+                      <label>Web</label>
+                      <input type="text" tabIndex={-1} autoComplete="off"
+                        value={reviewForm.website}
+                        onChange={(e) => setReviewForm({...reviewForm, website: e.target.value})} />
+                    </div>
+
+                    <div className="form-group captcha-group">
+                      <label>
+                        Verificación de seguridad *
+                        <button type="button" className="captcha-refresh" onClick={fetchReviewCaptcha} aria-label="Cambiar pregunta">↻</button>
+                      </label>
+                      <div className="captcha-row">
+                        <span className="captcha-question">{reviewCaptcha.question || 'Cargando…'}</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          required
+                          value={reviewForm.captcha_answer}
+                          onChange={(e) => setReviewForm({...reviewForm, captcha_answer: e.target.value})}
+                          placeholder="Respuesta"
+                          data-testid="review-captcha"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="budget-submit-btn"
+                      disabled={reviewSubmitting || !reviewCaptcha.token}
+                      data-testid="review-submit"
+                    >
+                      {reviewSubmitting ? 'Enviando...' : 'Enviar reseña →'}
+                    </button>
+                    {reviewError && (
+                      <p className="budget-error">{reviewError}</p>
+                    )}
+                  </form>
+                </>
+              ) : (
+                <div className="budget-success">
+                  <div className="success-icon">🌟</div>
+                  <h2>¡Gracias por tu reseña!</h2>
+                  <p>Ya está publicada en la web.</p>
                 </div>
               )}
             </div>

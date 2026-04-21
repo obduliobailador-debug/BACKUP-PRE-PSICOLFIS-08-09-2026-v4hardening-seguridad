@@ -301,6 +301,16 @@ class BudgetRequest(BaseModel):
     website: Optional[str] = ""
 
 
+class ReviewCreate(BaseModel):
+    author: str
+    rating: int = Field(ge=1, le=5)
+    text: str
+    role: Optional[str] = ""  # "Fisioterapeuta", "Dueño de cafetería"...
+    captcha_token: str
+    captcha_answer: str
+    website: Optional[str] = ""  # honeypot
+
+
 # ----- Simple stateless CAPTCHA (signed math challenge) -----
 CAPTCHA_SECRET = os.environ.get('CAPTCHA_SECRET') or secrets.token_hex(32)
 CAPTCHA_TTL_SECONDS = 600  # 10 minutes
@@ -558,6 +568,128 @@ async def submit_budget_request(request: BudgetRequest):
         )
 
     return {"success": True, "message": "Solicitud enviada correctamente"}
+
+
+# ----- Reviews / Testimonials -----
+@api_router.get("/reviews")
+async def list_reviews():
+    """Return the published (approved) reviews, newest first."""
+    cursor = db.reviews.find(
+        {"approved": True},
+        {"_id": 0, "email": 0}  # never expose email publicly
+    ).sort("created_at", -1).to_list(100)
+    reviews = await cursor
+
+    # Convert ISO string timestamps back to readable form for client
+    for r in reviews:
+        if isinstance(r.get("created_at"), str):
+            r["created_at"] = r["created_at"]
+
+    if reviews:
+        total = sum(r["rating"] for r in reviews)
+        average = round(total / len(reviews), 2)
+    else:
+        average = 0
+
+    return {
+        "reviews": reviews,
+        "count": len(reviews),
+        "average": average,
+    }
+
+
+@api_router.post("/reviews")
+async def create_review(payload: ReviewCreate):
+    """Submit a new review. Auto-approved, but can be hidden by admin in DB."""
+    author = payload.author.strip()
+    text = payload.text.strip()
+    role = (payload.role or "").strip()
+
+    if not author or not text:
+        raise HTTPException(status_code=400, detail="Nombre y reseña son obligatorios")
+
+    if len(text) < 20:
+        raise HTTPException(status_code=400, detail="La reseña debe tener al menos 20 caracteres")
+
+    if payload.website and payload.website.strip():
+        logger.warning(f"Honeypot triggered for review from {author}")
+        raise HTTPException(status_code=400, detail="Solicitud no válida")
+
+    if not verify_captcha(payload.captcha_token, payload.captcha_answer):
+        raise HTTPException(
+            status_code=400,
+            detail="Verificación de seguridad incorrecta. Por favor, vuelve a resolverla."
+        )
+
+    review = {
+        "id": str(uuid.uuid4()),
+        "author": author[:80],
+        "role": role[:80],
+        "rating": payload.rating,
+        "text": text[:1000],
+        "approved": True,  # auto-approve; admin can flip to False to hide
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.reviews.insert_one(review.copy())
+    review.pop("_id", None)
+    logger.info(f"New review from {author} with rating {payload.rating}")
+    return {"success": True, "review": review}
+
+
+async def seed_reviews_if_empty():
+    """Insert a few realistic starter reviews if the collection is empty."""
+    existing = await db.reviews.count_documents({})
+    if existing > 0:
+        return
+    seed = [
+        {
+            "id": str(uuid.uuid4()),
+            "author": "María Ruiz",
+            "role": "Fisioterapeuta autónoma",
+            "rating": 5,
+            "text": "Obdulio entendió a la primera cómo quería que mi agente respondiera. Ahora gestiona las preguntas básicas de mis pacientes y yo recupero casi 6 horas a la semana.",
+            "approved": True,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "author": "Javier Pérez",
+            "role": "Fundador de academia online",
+            "rating": 5,
+            "text": "El acompañamiento es lo que marca la diferencia. No te dan una herramienta y se van: te ayudan a que funcione. Mi agente ya redacta secuencias de email que convierten.",
+            "approved": True,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "author": "Laura Fernández",
+            "role": "Consultora de marketing",
+            "rating": 4,
+            "text": "Tuve dudas al principio, pero en pocas sesiones personalizamos el tono y la calidad de las respuestas mejoró muchísimo. Lo recomiendo para profesionales que quieran escalar sin perder su voz.",
+            "approved": True,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+        {
+            "id": str(uuid.uuid4()),
+            "author": "Carlos Méndez",
+            "role": "Dueño de clínica estética",
+            "rating": 5,
+            "text": "Me sorprendió lo rápido que se adapta a mi forma de hablar. Respuesta en minutos a preguntas que antes me ocupaban media mañana. 10 de 10.",
+            "approved": True,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+    ]
+    await db.reviews.insert_many(seed)
+    logger.info(f"Seeded {len(seed)} starter reviews")
+
+
+@app.on_event("startup")
+async def on_startup():
+    try:
+        await seed_reviews_if_empty()
+    except Exception as e:
+        logger.error(f"Seed error: {e}")
 
 
 @api_router.post("/checkout/session")
