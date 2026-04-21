@@ -258,7 +258,22 @@ const Home = () => {
               <li><a href="#precios">Precios</a></li>
               <li><a href="#faq">FAQ</a></li>
             </ul>
-            <button className="cta-button" onClick={() => window.location.href = '/agentes'}>Empezar Ahora</button>
+            <div className="nav-actions">
+              <button
+                className="cta-button"
+                onClick={() => window.location.href = '/agentes'}
+                data-testid="nav-empezar-btn"
+              >
+                Empezar Ahora
+              </button>
+              <button
+                className="contact-cta-button"
+                onClick={() => openBudgetForm('Consulta general')}
+                data-testid="nav-contact-btn"
+              >
+                Ponte en contacto
+              </button>
+            </div>
           </div>
         </nav>
 
@@ -723,7 +738,14 @@ const Home = () => {
             <div className="faq-contact">
               <h3>¿Aún tienes dudas?</h3>
               <p>Estamos aquí para ayudarte. Contáctanos y resolveremos todas tus preguntas.</p>
-              <a href="mailto:obdulio@psicolfis.net" className="contact-button">Contactar por Email</a>
+              <button
+                type="button"
+                className="contact-button"
+                onClick={() => openBudgetForm('Consulta general')}
+                data-testid="faq-contact-btn"
+              >
+                Contactar ahora
+              </button>
             </div>
           </div>
         </section>
