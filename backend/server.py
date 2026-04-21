@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, Request, HTTPException
-from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
+from fastapi.responses import JSONResponse, StreamingResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -52,6 +52,12 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+WHATSAPP_NUMBER = os.environ.get('WHATSAPP_NUMBER', '34670716305')
+WHATSAPP_DEFAULT_TEXT = os.environ.get(
+    'WHATSAPP_DEFAULT_TEXT',
+    'Hola Obdulio, te escribo desde psicolfis.net'
+)
 
 # URLs de acceso directo a cada agente
 AGENT_URLS = {
@@ -460,6 +466,19 @@ async def get_status_checks():
     return status_checks
 
 # Stripe Checkout Endpoints
+@api_router.get("/whatsapp")
+async def whatsapp_redirect():
+    """Server-side redirect that hides the real WhatsApp number from the public HTML.
+
+    Users click a link to /api/whatsapp on the frontend; the backend issues a
+    302 redirect to wa.me, so the phone number never appears in the page source.
+    """
+    from urllib.parse import quote
+    text = quote(WHATSAPP_DEFAULT_TEXT)
+    target = f"https://wa.me/{WHATSAPP_NUMBER}?text={text}"
+    return RedirectResponse(url=target, status_code=302, headers={"Cache-Control": "no-store"})
+
+
 @api_router.get("/captcha")
 async def get_captcha():
     """Issue a simple signed math CAPTCHA challenge.
