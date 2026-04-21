@@ -6,6 +6,13 @@ import axios from "axios";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
+// Enlaces directos de pago de Stripe por agente
+const AGENT_STRIPE_URLS = {
+  iris: "https://buy.stripe.com/cNicMY9Jf5NffL30aH7ok00",
+  alex: "https://buy.stripe.com/aFabIU2gN8ZraqJg9F7ok01",
+  umbral: "https://buy.stripe.com/14A5kwbRnejL56paPl7ok02"
+};
+
 const agents = [
   {
     id: "iris",
@@ -127,17 +134,30 @@ const Home = () => {
     plan: ''
   });
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const handleBudgetSubmit = async (e) => {
     e.preventDefault();
-    // Aquí se podría enviar a un backend o email
-    console.log('Solicitud de presupuesto:', budgetForm);
-    setFormSubmitted(true);
-    setTimeout(() => {
-      setShowBudgetForm(false);
-      setFormSubmitted(false);
-      setBudgetForm({ nombre: '', email: '', telefono: '', plan: '' });
-    }, 3000);
+    setFormSubmitting(true);
+    setFormError('');
+    try {
+      await axios.post(`${API}/contact/budget`, budgetForm);
+      setFormSubmitted(true);
+      setTimeout(() => {
+        setShowBudgetForm(false);
+        setFormSubmitted(false);
+        setBudgetForm({ nombre: '', email: '', telefono: '', plan: '' });
+      }, 3500);
+    } catch (error) {
+      console.error('Error enviando solicitud:', error);
+      setFormError(
+        error?.response?.data?.detail ||
+        'No se pudo enviar la solicitud. Inténtalo de nuevo en unos minutos.'
+      );
+    } finally {
+      setFormSubmitting(false);
+    }
   };
 
   const openBudgetForm = (planName) => {
@@ -145,25 +165,12 @@ const Home = () => {
     setShowBudgetForm(true);
   };
 
-  const handlePurchase = async (agentId) => {
-    setLoading({ ...loading, [agentId]: true });
-    try {
-      const originUrl = window.location.origin;
-      const response = await axios.post(`${API}/checkout/session`, {
-        agent_id: agentId,
-        origin_url: originUrl
-      });
-
-      if (response.data.url) {
-        window.location.href = response.data.url;
-      } else {
-        alert('Error al crear la sesión de pago');
-        setLoading({ ...loading, [agentId]: false });
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error al procesar la compra');
-      setLoading({ ...loading, [agentId]: false });
+  const handlePurchase = (agentId) => {
+    const url = AGENT_STRIPE_URLS[agentId];
+    if (url) {
+      window.location.href = url;
+    } else {
+      alert('Enlace de pago no disponible para este agente.');
     }
   };
 
@@ -663,7 +670,17 @@ const Home = () => {
                         placeholder="+34 600 000 000"
                       />
                     </div>
-                    <button type="submit" className="budget-submit-btn">Enviar Solicitud →</button>
+                    <button
+                      type="submit"
+                      className="budget-submit-btn"
+                      disabled={formSubmitting}
+                      data-testid="budget-submit-btn"
+                    >
+                      {formSubmitting ? 'Enviando...' : 'Enviar Solicitud →'}
+                    </button>
+                    {formError && (
+                      <p className="budget-error" data-testid="budget-error">{formError}</p>
+                    )}
                   </form>
                   <p className="budget-notice">Una vez hecha la reserva, nos pondremos en contacto con usted para concretar la personalización. Mínimo plazo de entrega: 5 días laborables.</p>
                 </>
@@ -902,21 +919,12 @@ const AgentesPage = () => {
     }
   ];
 
-  const handleBuyAgent = async (agentId) => {
-    setLoading(prev => ({ ...prev, [agentId]: true }));
-    try {
-      const response = await axios.post(`${API}/checkout/session`, {
-        agent_id: agentId,
-        origin_url: window.location.origin
-      });
-      if (response.data.url) {
-        window.location.href = response.data.url;
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Error al procesar la compra. Por favor, inténtalo de nuevo.");
-    } finally {
-      setLoading(prev => ({ ...prev, [agentId]: false }));
+  const handleBuyAgent = (agentId) => {
+    const url = AGENT_STRIPE_URLS[agentId];
+    if (url) {
+      window.location.href = url;
+    } else {
+      alert("Enlace de pago no disponible para este agente.");
     }
   };
 

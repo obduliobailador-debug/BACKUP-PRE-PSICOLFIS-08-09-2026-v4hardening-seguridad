@@ -318,16 +318,18 @@ body {
   left: 0;
   right: 0;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, transparent 100%);
-  padding: 30px;
+  padding: 16px 20px;
   display: flex;
   align-items: flex-end;
 }
 
 .agent-name {
-  font-size: 32px;
+  font-size: 22px;
   font-weight: bold;
   color: #f97316;
   text-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+  letter-spacing: 1px;
+  line-height: 1.1;
 }
 
 .agent-description {
@@ -2298,6 +2300,24 @@ body {
 .budget-submit-btn:hover {
   transform: translateY(-3px);
   box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+}
+
+.budget-submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.budget-error {
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #fecaca;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: center;
 }
 
 .budget-notice {

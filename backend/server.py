@@ -170,6 +170,75 @@ Tu sabiduría. Nuestra IA. Resultados en acción.
         logger.error(f"Error sending email to {customer_email}: {str(e)}")
         return False
 
+
+def send_budget_request_email(nombre: str, email: str, telefono: str, plan: str) -> bool:
+    """Send budget request email to the business owner."""
+    try:
+        if not SMTP_PASSWORD:
+            logger.error("SMTP_PASSWORD not configured - cannot send budget email")
+            return False
+
+        message = MIMEMultipart("alternative")
+        message["Subject"] = f"📩 Nueva solicitud de presupuesto - {plan}"
+        message["From"] = f"PSICOLFIS.NET <{SMTP_FROM}>"
+        message["To"] = SMTP_FROM
+        message["Reply-To"] = email
+
+        telefono_safe = telefono.strip() if telefono else "(no proporcionado)"
+
+        text = f"""Nueva solicitud de presupuesto desde psicolfis.net
+
+Plan seleccionado: {plan}
+
+Datos del solicitante:
+  - Nombre: {nombre}
+  - Email: {email}
+  - Teléfono: {telefono_safe}
+
+Responde a este correo para contactar directamente con el cliente.
+"""
+
+        html = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; color:#1f2937; background:#f8fafc; padding:24px;">
+  <div style="max-width:600px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 18px rgba(0,0,0,0.06);">
+    <div style="background:linear-gradient(135deg,#3b82f6,#8b5cf6); color:#fff; padding:24px 28px;">
+      <h1 style="margin:0; font-size:22px;">📩 Nueva solicitud de presupuesto</h1>
+      <p style="margin:6px 0 0; opacity:0.9;">Desde la landing de PSICOLFIS.NET</p>
+    </div>
+    <div style="padding:28px;">
+      <p style="margin:0 0 18px;"><strong>Plan seleccionado:</strong><br/>
+        <span style="display:inline-block; margin-top:4px; padding:6px 12px; background:#eef2ff; color:#4338ca; border-radius:999px; font-weight:600;">{plan}</span>
+      </p>
+      <table style="width:100%; border-collapse:collapse;">
+        <tr><td style="padding:10px 0; border-bottom:1px solid #e5e7eb; color:#6b7280; width:120px;">Nombre</td><td style="padding:10px 0; border-bottom:1px solid #e5e7eb;"><strong>{nombre}</strong></td></tr>
+        <tr><td style="padding:10px 0; border-bottom:1px solid #e5e7eb; color:#6b7280;">Email</td><td style="padding:10px 0; border-bottom:1px solid #e5e7eb;"><a href="mailto:{email}" style="color:#3b82f6;">{email}</a></td></tr>
+        <tr><td style="padding:10px 0; color:#6b7280;">Teléfono</td><td style="padding:10px 0;">{telefono_safe}</td></tr>
+      </table>
+      <p style="margin-top:22px; color:#6b7280; font-size:13px;">Puedes responder directamente a este correo para contactar con el cliente.</p>
+    </div>
+  </div>
+</body>
+</html>
+"""
+
+        message.attach(MIMEText(text, "plain"))
+        message.attach(MIMEText(html, "html"))
+
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context) as server:
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(SMTP_FROM, SMTP_FROM, message.as_string())
+
+        logger.info(f"Budget request email sent from {email} for plan {plan}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error sending budget request email: {str(e)}")
+        return False
+
 # Define Models
 class StatusCheck(BaseModel):
     model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
@@ -184,6 +253,12 @@ class StatusCheckCreate(BaseModel):
 class CheckoutRequest(BaseModel):
     agent_id: str
     origin_url: str
+
+class BudgetRequest(BaseModel):
+    nombre: str
+    email: str
+    telefono: Optional[str] = ""
+    plan: str
 
 class PaymentTransaction(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -327,6 +402,44 @@ async def get_status_checks():
     return status_checks
 
 # Stripe Checkout Endpoints
+@api_router.post("/contact/budget")
+async def submit_budget_request(request: BudgetRequest):
+    """Receive budget request from the landing page form and email it to the owner."""
+    nombre = request.nombre.strip()
+    email = request.email.strip()
+    plan = request.plan.strip()
+
+    if not nombre or not email or not plan:
+        raise HTTPException(status_code=400, detail="Nombre, email y plan son obligatorios")
+
+    # Persist the request for record-keeping
+    record = {
+        "id": str(uuid.uuid4()),
+        "nombre": nombre,
+        "email": email,
+        "telefono": (request.telefono or "").strip(),
+        "plan": plan,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "email_sent": False,
+    }
+
+    email_sent = send_budget_request_email(nombre, email, record["telefono"], plan)
+    record["email_sent"] = email_sent
+
+    try:
+        await db.budget_requests.insert_one(record)
+    except Exception as e:
+        logger.error(f"Error storing budget request: {str(e)}")
+
+    if not email_sent:
+        raise HTTPException(
+            status_code=502,
+            detail="No pudimos entregar tu solicitud por email en este momento. Por favor, inténtalo más tarde o escríbenos a obdulio@psicolfis.net."
+        )
+
+    return {"success": True, "message": "Solicitud enviada correctamente"}
+
+
 @api_router.post("/checkout/session")
 async def create_checkout_session(request: CheckoutRequest, http_request: Request):
     try:
