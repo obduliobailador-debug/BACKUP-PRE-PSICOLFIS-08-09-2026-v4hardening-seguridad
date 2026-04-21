@@ -131,23 +131,52 @@ const Home = () => {
     nombre: '',
     email: '',
     telefono: '',
-    plan: ''
+    plan: '',
+    agente: '',
+    mensaje: '',
+    captcha_answer: '',
+    website: '' // honeypot (invisible)
   });
+  const [captcha, setCaptcha] = useState({ question: '', token: '' });
+  const [captchaLoading, setCaptchaLoading] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+
+  const resetBudgetForm = () => {
+    setBudgetForm({
+      nombre: '', email: '', telefono: '', plan: '',
+      agente: '', mensaje: '', captcha_answer: '', website: ''
+    });
+  };
+
+  const fetchCaptcha = async () => {
+    setCaptchaLoading(true);
+    try {
+      const { data } = await axios.get(`${API}/captcha`);
+      setCaptcha({ question: data.question, token: data.token });
+    } catch (err) {
+      console.error('No se pudo cargar el captcha:', err);
+      setCaptcha({ question: '', token: '' });
+    } finally {
+      setCaptchaLoading(false);
+    }
+  };
 
   const handleBudgetSubmit = async (e) => {
     e.preventDefault();
     setFormSubmitting(true);
     setFormError('');
     try {
-      await axios.post(`${API}/contact/budget`, budgetForm);
+      await axios.post(`${API}/contact/budget`, {
+        ...budgetForm,
+        captcha_token: captcha.token,
+      });
       setFormSubmitted(true);
       setTimeout(() => {
         setShowBudgetForm(false);
         setFormSubmitted(false);
-        setBudgetForm({ nombre: '', email: '', telefono: '', plan: '' });
+        resetBudgetForm();
       }, 3500);
     } catch (error) {
       console.error('Error enviando solicitud:', error);
@@ -155,14 +184,24 @@ const Home = () => {
         error?.response?.data?.detail ||
         'No se pudo enviar la solicitud. Inténtalo de nuevo en unos minutos.'
       );
+      // Always refresh captcha after a failed submit so the user has a fresh challenge
+      setBudgetForm(prev => ({ ...prev, captcha_answer: '' }));
+      fetchCaptcha();
     } finally {
       setFormSubmitting(false);
     }
   };
 
   const openBudgetForm = (planName) => {
-    setBudgetForm({ ...budgetForm, plan: planName });
+    setBudgetForm(prev => ({
+      ...prev,
+      plan: planName,
+      captcha_answer: '',
+      website: ''
+    }));
+    setFormError('');
     setShowBudgetForm(true);
+    fetchCaptcha();
   };
 
   const handlePurchase = (agentId) => {
@@ -685,10 +724,83 @@ const Home = () => {
                         placeholder="+34 600 000 000"
                       />
                     </div>
+
+                    <div className="form-group">
+                      <label>¿Te interesa algún agente en particular? (opcional)</label>
+                      <select
+                        value={budgetForm.agente}
+                        onChange={(e) => setBudgetForm({...budgetForm, agente: e.target.value})}
+                        data-testid="budget-agent-select"
+                      >
+                        <option value="">Sin preferencia</option>
+                        <option value="IRIS">IRIS — vida digital, personal y profesional</option>
+                        <option value="ALEX">ALEX — trabajo, finanzas y decisiones</option>
+                        <option value="UMBRAL">UMBRAL — identidad, relaciones y decisiones</option>
+                        <option value="Varios / No lo tengo claro">Varios / No lo tengo claro</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="budget-message">¿En qué proyecto podemos ayudarte? (opcional)</label>
+                      <textarea
+                        id="budget-message"
+                        rows={5}
+                        value={budgetForm.mensaje}
+                        onChange={(e) => setBudgetForm({...budgetForm, mensaje: e.target.value})}
+                        placeholder="Cuéntanos brevemente qué te gustaría conseguir: tipo de negocio, procesos a automatizar, retos actuales, plazos, etc."
+                        data-testid="budget-message-textarea"
+                      />
+                    </div>
+
+                    {/* Honeypot: hidden from real users, tempting for bots */}
+                    <div
+                      className="hp-field"
+                      aria-hidden="true"
+                      style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }}
+                    >
+                      <label>Tu sitio web</label>
+                      <input
+                        type="text"
+                        tabIndex={-1}
+                        autoComplete="off"
+                        value={budgetForm.website}
+                        onChange={(e) => setBudgetForm({...budgetForm, website: e.target.value})}
+                      />
+                    </div>
+
+                    <div className="form-group captcha-group" data-testid="captcha-group">
+                      <label>
+                        Verificación de seguridad *
+                        <button
+                          type="button"
+                          className="captcha-refresh"
+                          onClick={fetchCaptcha}
+                          title="Cambiar pregunta"
+                          aria-label="Cambiar pregunta"
+                        >
+                          ↻
+                        </button>
+                      </label>
+                      <div className="captcha-row">
+                        <span className="captcha-question" data-testid="captcha-question">
+                          {captchaLoading ? 'Cargando…' : (captcha.question || 'No disponible')}
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          required
+                          value={budgetForm.captcha_answer}
+                          onChange={(e) => setBudgetForm({...budgetForm, captcha_answer: e.target.value})}
+                          placeholder="Tu respuesta"
+                          data-testid="captcha-input"
+                        />
+                      </div>
+                    </div>
+
                     <button
                       type="submit"
                       className="budget-submit-btn"
-                      disabled={formSubmitting}
+                      disabled={formSubmitting || !captcha.token}
                       data-testid="budget-submit-btn"
                     >
                       {formSubmitting ? 'Enviando...' : 'Enviar Solicitud →'}

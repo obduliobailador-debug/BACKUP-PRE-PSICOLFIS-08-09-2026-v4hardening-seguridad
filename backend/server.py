@@ -8,6 +8,11 @@ import os
 import logging
 import smtplib
 import ssl
+import hmac
+import hashlib
+import secrets
+import random
+import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pathlib import Path
@@ -171,7 +176,8 @@ Tu sabiduría. Nuestra IA. Resultados en acción.
         return False
 
 
-def send_budget_request_email(nombre: str, email: str, telefono: str, plan: str) -> bool:
+def send_budget_request_email(nombre: str, email: str, telefono: str, plan: str,
+                              agente: str = "", mensaje: str = "") -> bool:
     """Send budget request email to the business owner."""
     try:
         if not SMTP_PASSWORD:
@@ -185,38 +191,60 @@ def send_budget_request_email(nombre: str, email: str, telefono: str, plan: str)
         message["Reply-To"] = email
 
         telefono_safe = telefono.strip() if telefono else "(no proporcionado)"
+        agente_safe = agente.strip() if agente else "(sin preferencia)"
+        mensaje_safe = mensaje.strip() if mensaje else "(sin comentarios adicionales)"
 
         text = f"""Nueva solicitud de presupuesto desde psicolfis.net
 
 Plan seleccionado: {plan}
+Agente de interés: {agente_safe}
 
 Datos del solicitante:
   - Nombre: {nombre}
   - Email: {email}
   - Teléfono: {telefono_safe}
 
+Proyecto / comentarios:
+{mensaje_safe}
+
 Responde a este correo para contactar directamente con el cliente.
 """
+
+        # Escape minimal HTML in message to avoid breaking the layout
+        html_mensaje = (
+            mensaje_safe
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\n", "<br/>")
+        )
 
         html = f"""
 <!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"></head>
 <body style="font-family: Arial, sans-serif; color:#1f2937; background:#f8fafc; padding:24px;">
-  <div style="max-width:600px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 18px rgba(0,0,0,0.06);">
+  <div style="max-width:620px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 18px rgba(0,0,0,0.06);">
     <div style="background:linear-gradient(135deg,#3b82f6,#8b5cf6); color:#fff; padding:24px 28px;">
       <h1 style="margin:0; font-size:22px;">📩 Nueva solicitud de presupuesto</h1>
       <p style="margin:6px 0 0; opacity:0.9;">Desde la landing de PSICOLFIS.NET</p>
     </div>
     <div style="padding:28px;">
-      <p style="margin:0 0 18px;"><strong>Plan seleccionado:</strong><br/>
+      <p style="margin:0 0 10px;"><strong>Plan seleccionado:</strong><br/>
         <span style="display:inline-block; margin-top:4px; padding:6px 12px; background:#eef2ff; color:#4338ca; border-radius:999px; font-weight:600;">{plan}</span>
+      </p>
+      <p style="margin:0 0 18px;"><strong>Agente de interés:</strong>
+        <span style="display:inline-block; margin-left:6px; padding:4px 10px; background:#fef3c7; color:#92400e; border-radius:999px; font-weight:600;">{agente_safe}</span>
       </p>
       <table style="width:100%; border-collapse:collapse;">
         <tr><td style="padding:10px 0; border-bottom:1px solid #e5e7eb; color:#6b7280; width:120px;">Nombre</td><td style="padding:10px 0; border-bottom:1px solid #e5e7eb;"><strong>{nombre}</strong></td></tr>
         <tr><td style="padding:10px 0; border-bottom:1px solid #e5e7eb; color:#6b7280;">Email</td><td style="padding:10px 0; border-bottom:1px solid #e5e7eb;"><a href="mailto:{email}" style="color:#3b82f6;">{email}</a></td></tr>
         <tr><td style="padding:10px 0; color:#6b7280;">Teléfono</td><td style="padding:10px 0;">{telefono_safe}</td></tr>
       </table>
+      <div style="margin-top:22px; padding:16px 18px; background:#f9fafb; border-left:4px solid #8b5cf6; border-radius:6px;">
+        <p style="margin:0 0 6px; color:#6b7280; font-size:13px; text-transform:uppercase; letter-spacing:0.4px;">Proyecto / comentarios</p>
+        <p style="margin:0; color:#1f2937; line-height:1.6;">{html_mensaje}</p>
+      </div>
       <p style="margin-top:22px; color:#6b7280; font-size:13px;">Puedes responder directamente a este correo para contactar con el cliente.</p>
     </div>
   </div>
@@ -259,6 +287,36 @@ class BudgetRequest(BaseModel):
     email: str
     telefono: Optional[str] = ""
     plan: str
+    agente: Optional[str] = ""
+    mensaje: Optional[str] = ""
+    captcha_token: str
+    captcha_answer: str
+    # Honeypot: real users must leave this empty; bots tend to fill every field
+    website: Optional[str] = ""
+
+
+# ----- Simple stateless CAPTCHA (signed math challenge) -----
+CAPTCHA_SECRET = os.environ.get('CAPTCHA_SECRET') or secrets.token_hex(32)
+CAPTCHA_TTL_SECONDS = 600  # 10 minutes
+
+
+def _build_captcha_signature(answer: str, issued_at: int) -> str:
+    payload = f"{answer}:{issued_at}".encode("utf-8")
+    return hmac.new(CAPTCHA_SECRET.encode("utf-8"), payload, hashlib.sha256).hexdigest()
+
+
+def verify_captcha(token: str, user_answer: str) -> bool:
+    try:
+        if not token or "." not in token:
+            return False
+        issued_str, signature = token.split(".", 1)
+        issued_at = int(issued_str)
+        if time.time() - issued_at > CAPTCHA_TTL_SECONDS:
+            return False
+        expected = _build_captcha_signature(user_answer.strip(), issued_at)
+        return hmac.compare_digest(expected, signature)
+    except Exception:
+        return False
 
 class PaymentTransaction(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -402,6 +460,25 @@ async def get_status_checks():
     return status_checks
 
 # Stripe Checkout Endpoints
+@api_router.get("/captcha")
+async def get_captcha():
+    """Issue a simple signed math CAPTCHA challenge.
+
+    The token encodes the issue timestamp and an HMAC that depends on the
+    correct answer, so verification is stateless - no DB storage needed.
+    """
+    a = random.randint(1, 9)
+    b = random.randint(1, 9)
+    answer = str(a + b)
+    issued_at = int(time.time())
+    signature = _build_captcha_signature(answer, issued_at)
+    return {
+        "question": f"¿Cuánto es {a} + {b}?",
+        "token": f"{issued_at}.{signature}",
+        "ttl_seconds": CAPTCHA_TTL_SECONDS,
+    }
+
+
 @api_router.post("/contact/budget")
 async def submit_budget_request(request: BudgetRequest):
     """Receive budget request from the landing page form and email it to the owner."""
@@ -412,6 +489,21 @@ async def submit_budget_request(request: BudgetRequest):
     if not nombre or not email or not plan:
         raise HTTPException(status_code=400, detail="Nombre, email y plan son obligatorios")
 
+    # Honeypot: real users never fill this hidden field
+    if request.website and request.website.strip():
+        logger.warning(f"Honeypot triggered for email {email} - rejecting")
+        raise HTTPException(status_code=400, detail="Solicitud no válida")
+
+    # Verify CAPTCHA
+    if not verify_captcha(request.captcha_token, request.captcha_answer):
+        raise HTTPException(
+            status_code=400,
+            detail="Verificación de seguridad incorrecta. Por favor, vuelve a resolverla."
+        )
+
+    agente = (request.agente or "").strip()
+    mensaje = (request.mensaje or "").strip()
+
     # Persist the request for record-keeping
     record = {
         "id": str(uuid.uuid4()),
@@ -419,11 +511,20 @@ async def submit_budget_request(request: BudgetRequest):
         "email": email,
         "telefono": (request.telefono or "").strip(),
         "plan": plan,
+        "agente": agente,
+        "mensaje": mensaje,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "email_sent": False,
     }
 
-    email_sent = send_budget_request_email(nombre, email, record["telefono"], plan)
+    email_sent = send_budget_request_email(
+        nombre=nombre,
+        email=email,
+        telefono=record["telefono"],
+        plan=plan,
+        agente=agente,
+        mensaje=mensaje,
+    )
     record["email_sent"] = email_sent
 
     try:
