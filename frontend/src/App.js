@@ -411,8 +411,9 @@ const Home = () => {
     fetchCaptcha();
   };
 
-  const handlePurchase = (agentId) => {
-    const url = AGENT_STRIPE_URLS[agentId];
+  const handlePurchase = (agentId, level = "demo") => {
+    const map = level === "full" ? AGENT_STRIPE_URLS_FULL : AGENT_STRIPE_URLS;
+    const url = map[agentId];
     if (url) {
       window.location.href = url;
     } else {
@@ -473,16 +474,26 @@ const Home = () => {
                     <p className="agent-description">{agent.description}</p>
                     <div className="agent-price">{agent.price}</div>
                     <div className="agent-offer-note" data-testid={`agent-offer-note-${agent.id}`}>
-                      Oferta limitada · solo demostración real
+                      Elige el plan que prefieras
                     </div>
-                    <button
-                      className="buy-button"
-                      onClick={() => handlePurchase(agent.id)}
-                      disabled={loading[agent.id]}
-                      data-testid={`buy-button-${agent.id}`}
-                    >
-                      {loading[agent.id] ? 'Procesando...' : 'LO QUIERO...'}
-                    </button>
+                    <div className="agent-actions">
+                      <button
+                        className="buy-button buy-demo"
+                        onClick={() => handlePurchase(agent.id, "demo")}
+                        disabled={loading[agent.id]}
+                        data-testid={`buy-button-${agent.id}`}
+                      >
+                        {loading[agent.id] ? 'Procesando...' : 'Demo limitada'}
+                      </button>
+                      <button
+                        className="buy-button buy-full"
+                        onClick={() => handlePurchase(agent.id, "full")}
+                        disabled={loading[agent.id]}
+                        data-testid={`buy-full-button-${agent.id}`}
+                      >
+                        Acceso total
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1490,8 +1501,9 @@ const AgentesPage = () => {
     }
   ];
 
-  const handleBuyAgent = (agentId) => {
-    const url = AGENT_STRIPE_URLS[agentId];
+  const handleBuyAgent = (agentId, level = "demo") => {
+    const map = level === "full" ? AGENT_STRIPE_URLS_FULL : AGENT_STRIPE_URLS;
+    const url = map[agentId];
     if (url) {
       window.location.href = url;
     } else {
@@ -1551,16 +1563,26 @@ const AgentesPage = () => {
                 <div className="agente-footer-v2">
                   <div className="agente-price-wrap-v2">
                     <span className="agente-price-v2">{agent.price}</span>
-                    <span className="agente-offer-note-v2">Oferta limitada · solo demostración real</span>
+                    <span className="agente-offer-note-v2">Elige el plan que prefieras</span>
                   </div>
-                  <button
-                    className="agente-buy-btn-v2"
-                    onClick={() => handleBuyAgent(agent.id)}
-                    disabled={loading[agent.id]}
-                    data-testid={`agente-buy-${agent.id}`}
-                  >
-                    {loading[agent.id] ? "Procesando..." : "Lo Quiero"}
-                  </button>
+                  <div className="agente-actions-v2">
+                    <button
+                      className="agente-buy-btn-v2 agente-buy-demo"
+                      onClick={() => handleBuyAgent(agent.id, "demo")}
+                      disabled={loading[agent.id]}
+                      data-testid={`agente-buy-${agent.id}`}
+                    >
+                      {loading[agent.id] ? "Procesando..." : "Demo limitada"}
+                    </button>
+                    <button
+                      className="agente-buy-btn-v2 agente-buy-full"
+                      onClick={() => handleBuyAgent(agent.id, "full")}
+                      disabled={loading[agent.id]}
+                      data-testid={`agente-buy-full-${agent.id}`}
+                    >
+                      Acceso total
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
