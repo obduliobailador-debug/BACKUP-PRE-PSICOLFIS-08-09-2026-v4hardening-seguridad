@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, Request, HTTPException
+from fastapi import FastAPI, APIRouter, Request, HTTPException, Header
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
@@ -13,13 +13,14 @@ import hashlib
 import secrets
 import random
 import time
+import jwt as pyjwt
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Dict
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
 
 ROOT_DIR = Path(__file__).parent
@@ -59,20 +60,115 @@ WHATSAPP_DEFAULT_TEXT = os.environ.get(
     'Hola Obdulio, te escribo desde psicolfis.net'
 )
 
-# URLs de acceso directo a cada agente
-AGENT_URLS = {
-    "iris": "https://config-recovery-1.preview.emergentagent.com/agente/iris",
-    "alex": "https://config-recovery-1.preview.emergentagent.com/agente/alex",
-    "umbral": "https://config-recovery-1.preview.emergentagent.com/agente/umbral"
+# Public-facing base URL where the SPA is served (used to build email links)
+PUBLIC_BASE_URL = os.environ.get('PUBLIC_BASE_URL', 'https://psicolfis.net').rstrip('/')
+
+# JWT config for signed access tokens delivered after purchase
+JWT_SECRET = os.environ.get('JWT_SECRET') or secrets.token_hex(64)
+JWT_ALGORITHM = "HS256"
+ACCESS_TOKEN_DAYS = int(os.environ.get('ACCESS_TOKEN_DAYS', '365'))
+
+# Internal service key for protected admin endpoints
+SERVICE_API_KEY = os.environ.get('SERVICE_API_KEY', '')
+
+# Agent catalogue: ID, public name, and Pickaxe deployment IDs per access level.
+# The "demo" deployment is the same as "full" by default - Pickaxe handles
+# rate limits at the deployment level when configured. If you eventually want
+# distinct demo deployments, set PICKAXE_DEPLOYMENT_*_DEMO env vars.
+def _agent_deployment(agent_key: str, level: str) -> str:
+    base = os.environ.get(f'PICKAXE_DEPLOYMENT_{agent_key.upper()}', '')
+    if level == 'demo':
+        return os.environ.get(f'PICKAXE_DEPLOYMENT_{agent_key.upper()}_DEMO', base)
+    return base
+
+
+AGENT_CATALOGUE = {
+    "iris": {"id": "iris", "name": "IRIS"},
+    "alex": {"id": "alex", "name": "ALEX"},
+    "umbral": {"id": "umbral", "name": "UMBRAL"},
 }
 
-# Email sending function
-def send_purchase_email(customer_email: str, customer_name: str, agent_name: str, agent_id: str):
-    """Send confirmation email after successful purchase"""
+
+def get_agent_info(agent_id: str, level: str = "full") -> Optional[Dict]:
+    """Return agent metadata + Pickaxe deployment id for the given access level."""
+    info = AGENT_CATALOGUE.get((agent_id or "").lower())
+    if not info:
+        return None
+    deployment_id = _agent_deployment(info["id"], level)
+    return {
+        "id": info["id"],
+        "name": info["name"],
+        "level": level,
+        "deployment_id": deployment_id,
+    }
+
+
+def generate_access_token(
+    customer_email: str,
+    agent_id: str,
+    level: str = "full",
+    customer_name: str = "",
+    days_valid: Optional[int] = None,
+) -> str:
+    """Generate a signed JWT granting access to a specific agent for a customer."""
+    if days_valid is None:
+        days_valid = ACCESS_TOKEN_DAYS
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": customer_email.lower().strip(),
+        "name": (customer_name or "").strip(),
+        "agent": agent_id.lower(),
+        "level": level.lower(),
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(days=days_valid)).timestamp()),
+        "jti": uuid.uuid4().hex,
+    }
+    return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def decode_access_token(token: str) -> Dict:
+    """Validate and decode a JWT access token. Raises HTTPException on failure."""
     try:
-        # Get specific agent URL
-        agent_url = AGENT_URLS.get(agent_id.lower(), "https://config-recovery-1.preview.emergentagent.com/")
-        
+        payload = pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except pyjwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="El enlace de acceso ha caducado. Contacta con nosotros para renovarlo.")
+    except pyjwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Enlace de acceso no válido.")
+    if not payload.get("agent") or not payload.get("sub"):
+        raise HTTPException(status_code=401, detail="Token de acceso incompleto.")
+    return payload
+
+
+def build_agent_access_url(token: str) -> str:
+    return f"{PUBLIC_BASE_URL}/mi-agente/{token}"
+
+# Email sending function
+def send_purchase_email(
+    customer_email: str,
+    customer_name: str,
+    agent_name: str,
+    agent_id: str,
+    level: str = "full",
+):
+    """Send confirmation email after a successful purchase.
+
+    Generates a signed JWT access token tied to the customer's email + agent +
+    level, then builds a personal access URL on psicolfis.net that gates the
+    embedded Pickaxe agent. The customer never sees the underlying Pickaxe URL.
+    """
+    try:
+        # Generate a signed access token and build the personal access URL.
+        # NB: this URL stays inside psicolfis.net by design.
+        token = generate_access_token(
+            customer_email=customer_email,
+            agent_id=agent_id,
+            level=level,
+            customer_name=customer_name,
+        )
+        agent_url = build_agent_access_url(token)
+
+        access_label = "Acceso completo" if level == "full" else "Versión demo"
+
         # Create message
         message = MIMEMultipart("alternative")
         message["Subject"] = f"🎉 ¡Tu Agente {agent_name} está listo! - PSICOLFIS.NET"
@@ -83,11 +179,11 @@ def send_purchase_email(customer_email: str, customer_name: str, agent_name: str
         text = f"""
 ¡Hola {customer_name}!
 
-¡Gracias por tu compra...! Tu Agente de IA {agent_name} ya está disponible y listo para ayudarte.
+¡Gracias por tu compra...! Tu Agente de IA {agent_name} ({access_label}) ya está disponible y listo para ayudarte.
 
-Lo que acabas de activar no es solo un agente… es una forma nueva de avanzar con más claridad, foco y libertad. Gracias por confiar. Aquí empieza algo grande.
+Lo que acabas de activar no es solo un agente… es una forma nueva de avanzar con más claridad, foco y libertad. Gracias por confiar. Aquí empieza algo grande. Bienvenido al Universo PSICOLFIS.NET.
 
-Para acceder a tu agente, haz clic en el siguiente enlace:
+Para acceder a tu agente, haz clic en el siguiente enlace personal e intransferible:
 {agent_url}
 
 ¿Qué puedes hacer ahora?
@@ -132,14 +228,18 @@ Tu sabiduría. Nuestra IA. Resultados en acción.
         <div class="content">
             <p>¡Hola <strong>{customer_name}</strong>!</p>
             
-            <p>¡Gracias por tu compra...! Tu Agente de IA <span class="agent-name">{agent_name}</span> ya está disponible y listo para ayudarte.</p>
+            <p>¡Gracias por tu compra...! Tu Agente de IA <span class="agent-name">{agent_name}</span> <em>({access_label})</em> ya está disponible y listo para ayudarte.</p>
             
-            <p class="inspirational">Lo que acabas de activar no es solo un agente… es una forma nueva de avanzar con más claridad, foco y libertad. Gracias por confiar. Aquí empieza algo grande.</p>
+            <p class="inspirational">Lo que acabas de activar no es solo un agente… es una forma nueva de avanzar con más claridad, foco y libertad. Gracias por confiar. Aquí empieza algo grande. <strong>Bienvenido al Universo PSICOLFIS.NET.</strong></p>
             
             <p style="text-align: center;">
                 <a href="{agent_url}" class="button">
                     🚀 Acceder a mi Agente {agent_name}
                 </a>
+            </p>
+
+            <p style="font-size: 13px; color: #64748b; text-align: center; margin: 0 0 18px;">
+              Este enlace es personal e intransferible. Te lleva directamente a tu agente dentro de psicolfis.net.
             </p>
             
             <p><strong>¿Qué puedes hacer ahora?</strong></p>
@@ -637,6 +737,76 @@ async def create_review(payload: ReviewCreate):
     return {"success": True, "review": review}
 
 
+# ----- Access Tokens (for embedded Pickaxe agents) -----
+
+class AccessGenerateRequest(BaseModel):
+    customer_email: EmailStr
+    customer_name: Optional[str] = ""
+    agent_id: str
+    level: str = "full"  # "demo" or "full"
+    days_valid: Optional[int] = None
+
+
+@api_router.get("/access/validate")
+async def validate_access_token(token: str):
+    """Validate a JWT access token and return the agent metadata to embed.
+
+    Called from the SPA at /mi-agente/:token. Returns the Pickaxe deployment
+    ID needed to render the embedded agent. The Pickaxe URL itself never
+    leaves the server-side configuration.
+    """
+    payload = decode_access_token(token)
+    agent_id = payload.get("agent")
+    level = payload.get("level", "full")
+    info = get_agent_info(agent_id, level=level)
+    if not info or not info.get("deployment_id"):
+        raise HTTPException(status_code=404, detail="Agente no encontrado o no configurado.")
+
+    return {
+        "agent_id": info["id"],
+        "agent_name": info["name"],
+        "level": info["level"],
+        "deployment_id": info["deployment_id"],
+        "customer_email": payload.get("sub"),
+        "customer_name": payload.get("name", ""),
+        "expires_at": payload.get("exp"),
+    }
+
+
+@api_router.post("/access/generate")
+async def admin_generate_access(
+    payload: AccessGenerateRequest,
+    x_service_key: Optional[str] = Header(default=None, alias="X-Service-Key"),
+):
+    """Admin-only endpoint to generate a personal access link manually.
+
+    Useful for sending access to an existing customer outside Stripe (gifts,
+    partners, replays, etc.). Protected by SERVICE_API_KEY header.
+    """
+    if not SERVICE_API_KEY or x_service_key != SERVICE_API_KEY:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    info = get_agent_info(payload.agent_id, level=payload.level)
+    if not info or not info.get("deployment_id"):
+        raise HTTPException(status_code=400, detail="Agente o nivel no válido.")
+
+    token = generate_access_token(
+        customer_email=payload.customer_email,
+        agent_id=info["id"],
+        level=info["level"],
+        customer_name=payload.customer_name or "",
+        days_valid=payload.days_valid,
+    )
+    url = build_agent_access_url(token)
+    return {
+        "token": token,
+        "url": url,
+        "agent_id": info["id"],
+        "agent_name": info["name"],
+        "level": info["level"],
+    }
+
+
 async def seed_reviews_if_empty():
     """Insert a few realistic starter reviews if the collection is empty."""
     existing = await db.reviews.count_documents({})
@@ -872,11 +1042,22 @@ async def stripe_webhook(request: Request):
                 customer_name = session.customer_details.name if session.customer_details else "Cliente"
                 
                 if customer_email:
+                    # Determine access level: from metadata if provided, else "full"
+                    purchase_metadata = transaction.get("metadata", {}) or {}
+                    level = (purchase_metadata.get("level")
+                             or webhook_response.metadata.get("level")
+                             if hasattr(webhook_response, "metadata") and webhook_response.metadata
+                             else purchase_metadata.get("level"))
+                    level = (level or "full").lower()
+                    if level not in ("demo", "full"):
+                        level = "full"
+
                     email_sent = send_purchase_email(
                         customer_email=customer_email,
                         customer_name=customer_name or "Cliente",
                         agent_name=agent_name,
-                        agent_id=agent_id
+                        agent_id=agent_id,
+                        level=level,
                     )
                     if email_sent:
                         logger.info(f"Confirmation email sent to {customer_email}")

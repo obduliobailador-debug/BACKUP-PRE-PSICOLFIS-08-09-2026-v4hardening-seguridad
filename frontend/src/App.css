@@ -3578,3 +3578,144 @@ body {
   transform: translateY(-3px);
   box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
 }
+
+/* ====== /mi-agente/:token — embedded Pickaxe page ====== */
+.mi-agente-page {
+  min-height: 100vh;
+  background: #0b1020;
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+.mi-agente-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 22px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.mi-agente-brand {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  line-height: 1.1;
+}
+.mi-agente-brand-mark {
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.mi-agente-brand-sub {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+.mi-agente-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mi-agente-agent-name {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #f8fafc;
+}
+.mi-agente-level {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+}
+.mi-agente-help {
+  font-size: 13px;
+  color: #cbd5e1;
+  text-decoration: none;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 8px 14px;
+  border-radius: 999px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.mi-agente-help:hover {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+.mi-agente-shell {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 18px;
+}
+.mi-agente-stage {
+  flex: 1;
+  background: #ffffff;
+  border-radius: 14px;
+  overflow: hidden;
+  min-height: calc(100vh - 110px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+.mi-agente-pickaxe {
+  width: 100%;
+  height: 100%;
+  min-height: calc(100vh - 110px);
+}
+.mi-agente-loading,
+.mi-agente-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 40px 24px;
+  margin: auto;
+  max-width: 540px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+.mi-agente-error h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #f87171;
+  margin: 0;
+}
+.mi-agente-error p {
+  color: #cbd5e1;
+}
+.mi-agente-error-hint {
+  font-size: 14px;
+  color: #94a3b8;
+}
+.mi-agente-error-hint a {
+  color: #93c5fd;
+}
+.mi-agente-loading .spinner {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 3px solid rgba(148, 163, 184, 0.25);
+  border-top-color: #8b5cf6;
+  animation: mi-agente-spin 0.9s linear infinite;
+}
+@keyframes mi-agente-spin {
+  to { transform: rotate(360deg); }
+}
+@media (max-width: 640px) {
+  .mi-agente-header { flex-wrap: wrap; gap: 8px; }
+  .mi-agente-help { order: 3; flex-basis: 100%; text-align: center; }
+}
