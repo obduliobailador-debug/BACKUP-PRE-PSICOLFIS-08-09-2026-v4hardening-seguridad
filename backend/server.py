@@ -179,6 +179,7 @@ def send_purchase_email(
             customer_name=customer_name or "",
             access_url=agent_url,
             full_url=full_url,
+            photo_base_url=PUBLIC_BASE_URL,
         )
 
         message = MIMEMultipart("alternative")
@@ -730,8 +731,25 @@ async def admin_generate_access(
     }
 
 
+@api_router.get("/agents/{agent_id}/photo")
+async def get_agent_photo(agent_id: str):
+    """Serve a static portrait image for an agent (used in emails)."""
+    agent_id = (agent_id or "").lower()
+    if agent_id not in {"iris", "alex", "umbral"}:
+        raise HTTPException(status_code=404, detail="Not found")
+    img_path = static_dir / "agents" / f"{agent_id}.jpg"
+    if not img_path.exists():
+        raise HTTPException(status_code=404, detail="Photo not found")
+    return FileResponse(
+        img_path,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
 @api_router.get("/access/preview-email")
 async def admin_preview_email(
+    request: Request,
     agent_id: str,
     level: str = "demo",
     customer_name: str = "Obdulio",
@@ -765,12 +783,23 @@ async def admin_preview_email(
     access_url = build_agent_access_url(token)
     full_url = os.environ.get(f'STRIPE_FULL_URL_{info["id"].upper()}', '') or None
 
+    # Build a public-facing photo base URL. Prefer x-forwarded headers (set by
+    # the ingress proxy when reaching us through a custom domain or preview),
+    # fall back to PUBLIC_BASE_URL only as a last resort.
+    fwd_proto = request.headers.get("x-forwarded-proto", "https")
+    fwd_host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+    if fwd_host and not fwd_host.startswith("localhost"):
+        photo_base = f"{fwd_proto}://{fwd_host}"
+    else:
+        photo_base = PUBLIC_BASE_URL
+
     subject, plain, html = render_email(
         agent_id=info["id"],
         level=info["level"],
         customer_name=customer_name,
         access_url=access_url,
         full_url=full_url,
+        photo_base_url=photo_base,
     )
     # Wrap with the subject as a small banner above the email so previewers see
     # the From / Subject metadata too.

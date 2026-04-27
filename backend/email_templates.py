@@ -17,10 +17,14 @@ _BASE_STYLES = """
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1f2937; background: #f3f4f6; margin: 0; padding: 0; }
   .wrap { max-width: 620px; margin: 0 auto; padding: 24px 16px; }
   .card { background: #ffffff; border-radius: 14px; overflow: hidden; box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08); }
-  .header { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: #ffffff; padding: 30px 28px; }
+  .header { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: #ffffff; padding: 26px 28px; }
+  .header table { width: 100%; border-collapse: collapse; }
+  .header td.photo-cell { width: 96px; padding-right: 18px; vertical-align: middle; }
+  .header td.text-cell { vertical-align: middle; }
+  .header .photo { display: block; width: 88px; height: 88px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.55); box-shadow: 0 6px 18px rgba(0,0,0,0.18); }
   .header .brand { font-size: 12px; letter-spacing: 0.18em; opacity: 0.85; text-transform: uppercase; }
-  .header h1 { margin: 8px 0 0; font-size: 24px; line-height: 1.25; font-weight: 800; }
-  .header .agent-tag { display: inline-block; margin-top: 14px; padding: 6px 14px; border-radius: 999px; background: rgba(255,255,255,0.18); font-weight: 700; letter-spacing: 0.06em; font-size: 13px; }
+  .header h1 { margin: 6px 0 0; font-size: 22px; line-height: 1.25; font-weight: 800; }
+  .header .agent-tag { display: inline-block; margin-top: 12px; padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,0.18); font-weight: 700; letter-spacing: 0.06em; font-size: 12.5px; }
   .body { padding: 30px 28px 12px; color: #1f2937; font-size: 15.5px; }
   .body p { margin: 0 0 14px; }
   .body .lead { font-weight: 500; color: #0f172a; }
@@ -41,7 +45,8 @@ _BASE_STYLES = """
 """
 
 
-def _shell(header_title: str, agent_name: str, level_label: str, body_html: str) -> str:
+def _shell(header_title: str, agent_name: str, agent_id: str, level_label: str, body_html: str, photo_base_url: str) -> str:
+    photo_url = f"{photo_base_url.rstrip('/')}/api/agents/{agent_id.lower()}/photo"
     return f"""<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -53,9 +58,18 @@ def _shell(header_title: str, agent_name: str, level_label: str, body_html: str)
   <div class="wrap">
     <div class="card">
       <div class="header">
-        <div class="brand">Universo PSICOLFIS.NET</div>
-        <h1>{header_title}</h1>
-        <span class="agent-tag">{agent_name} · {level_label}</span>
+        <table cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td class="photo-cell">
+              <img class="photo" src="{photo_url}" alt="{agent_name}" width="88" height="88" />
+            </td>
+            <td class="text-cell">
+              <div class="brand">Universo PSICOLFIS.NET</div>
+              <h1>{header_title}</h1>
+              <span class="agent-tag">{agent_name} · {level_label}</span>
+            </td>
+          </tr>
+        </table>
       </div>
       <div class="body">
         {body_html}
@@ -243,6 +257,7 @@ def render_email(
     customer_name: str,
     access_url: str,
     full_url: Optional[str] = None,
+    photo_base_url: str = "https://psicolfis.net",
 ):
     """Build (subject, plain_text, html) for a given agent_id and level.
 
@@ -281,7 +296,7 @@ def render_email(
         upsell=upsell_block,
     )
 
-    html = _shell(header_title, agent_name, level_label, body_html)
+    html = _shell(header_title, agent_name, agent_id, level_label, body_html, photo_base_url)
 
     # Plain text fallback derived from the rendered HTML body
     plain = _strip_html(body_html)
