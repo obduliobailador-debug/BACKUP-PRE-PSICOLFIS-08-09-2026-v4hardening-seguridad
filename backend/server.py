@@ -155,11 +155,12 @@ def send_purchase_email(
 
     Generates a signed JWT access token tied to the customer's email + agent +
     level, then builds a personal access URL on psicolfis.net that gates the
-    embedded Pickaxe agent. The customer never sees the underlying Pickaxe URL.
+    embedded Pickaxe agent. Email content is rendered from per-agent templates
+    so each agent (IRIS / ALEX / UMBRAL) speaks in its own voice.
     """
     try:
-        # Generate a signed access token and build the personal access URL.
-        # NB: this URL stays inside psicolfis.net by design.
+        from email_templates import render_email
+
         token = generate_access_token(
             customer_email=customer_email,
             agent_id=agent_id,
@@ -168,104 +169,25 @@ def send_purchase_email(
         )
         agent_url = build_agent_access_url(token)
 
-        access_label = "Acceso completo" if level == "full" else "Versión demo"
+        # Upsell URL only matters for demo emails. We pull it from env so it
+        # can be rotated without code changes.
+        full_url = os.environ.get(f'STRIPE_FULL_URL_{(agent_id or "").upper()}', '') or None
 
-        # Create message
+        subject, text, html = render_email(
+            agent_id=agent_id,
+            level=level,
+            customer_name=customer_name or "",
+            access_url=agent_url,
+            full_url=full_url,
+        )
+
         message = MIMEMultipart("alternative")
-        message["Subject"] = f"🎉 ¡Tu Agente {agent_name} está listo! - PSICOLFIS.NET"
+        message["Subject"] = subject
         message["From"] = f"PSICOLFIS.NET <{SMTP_FROM}>"
         message["To"] = customer_email
-        
-        # Plain text version
-        text = f"""
-¡Hola {customer_name}!
 
-¡Gracias por tu compra...! Tu Agente de IA {agent_name} ({access_label}) ya está disponible y listo para ayudarte.
-
-Lo que acabas de activar no es solo un agente… es una forma nueva de avanzar con más claridad, foco y libertad. Gracias por confiar. Aquí empieza algo grande. Bienvenido al Universo PSICOLFIS.NET.
-
-Para acceder a tu agente, haz clic en el siguiente enlace personal e intransferible:
-{agent_url}
-
-¿Qué puedes hacer ahora?
-- Accede a tu agente usando el enlace de arriba
-- Comienza a interactuar y multiplicar tu productividad
-- Contacta con nosotros si tienes alguna duda
-
-Si tienes alguna pregunta, no dudes en responder a este email. Estamos para acompañarte y mantenernos en contacto.
-
-Recibe un afectuoso saludo,
-Obdulio Bailador
-
----
-PSICOLFIS.NET
-Tu sabiduría. Nuestra IA. Resultados en acción.
-📧 obdulio@psicolfis.net | 🌐 psicolfis.net
-        """
-        
-        # HTML version
-        html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-        .content {{ background: #f8fafc; padding: 30px; border-radius: 0 0 10px 10px; }}
-        .button {{ display: inline-block; background: linear-gradient(90deg, #3b82f6, #8b5cf6); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }}
-        .footer {{ text-align: center; margin-top: 20px; color: #64748b; font-size: 14px; }}
-        .agent-name {{ color: #3b82f6; font-weight: bold; font-size: 24px; }}
-        .inspirational {{ font-style: italic; color: #475569; margin: 15px 0; padding: 15px; background: #e0e7ff; border-radius: 8px; border-left: 4px solid #3b82f6; }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🎉 ¡Compra Exitosa!</h1>
-            <p>Tu Agente de IA está listo</p>
-        </div>
-        <div class="content">
-            <p>¡Hola <strong>{customer_name}</strong>!</p>
-            
-            <p>¡Gracias por tu compra...! Tu Agente de IA <span class="agent-name">{agent_name}</span> <em>({access_label})</em> ya está disponible y listo para ayudarte.</p>
-            
-            <p class="inspirational">Lo que acabas de activar no es solo un agente… es una forma nueva de avanzar con más claridad, foco y libertad. Gracias por confiar. Aquí empieza algo grande. <strong>Bienvenido al Universo PSICOLFIS.NET.</strong></p>
-            
-            <p style="text-align: center;">
-                <a href="{agent_url}" class="button">
-                    🚀 Acceder a mi Agente {agent_name}
-                </a>
-            </p>
-
-            <p style="font-size: 13px; color: #64748b; text-align: center; margin: 0 0 18px;">
-              Este enlace es personal e intransferible. Te lleva directamente a tu agente dentro de psicolfis.net.
-            </p>
-            
-            <p><strong>¿Qué puedes hacer ahora?</strong></p>
-            <ul>
-                <li>Accede a tu agente usando el botón de arriba</li>
-                <li>Comienza a interactuar y multiplicar tu productividad</li>
-                <li>Contacta con nosotros si tienes alguna duda</li>
-            </ul>
-            
-            <p>Si tienes alguna pregunta, no dudes en responder a este email. Estamos para acompañarte y mantenernos en contacto.</p>
-            
-            <p>Recibe un afectuoso saludo,<br><strong>Obdulio Bailador</strong></p>
-        </div>
-        <div class="footer">
-            <p><strong>PSICOLFIS.NET</strong></p>
-            <p>Tu sabiduría. Nuestra IA. Resultados en acción.</p>
-            <p>📧 obdulio@psicolfis.net | 🌐 psicolfis.net</p>
-        </div>
-    </div>
-</body>
-</html>
-        """
-        
-        part1 = MIMEText(text, "plain")
-        part2 = MIMEText(html, "html")
+        part1 = MIMEText(text, "plain", "utf-8")
+        part2 = MIMEText(html, "html", "utf-8")
         message.attach(part1)
         message.attach(part2)
         
@@ -275,7 +197,7 @@ Tu sabiduría. Nuestra IA. Resultados en acción.
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.sendmail(SMTP_FROM, customer_email, message.as_string())
         
-        logger.info(f"Email sent successfully to {customer_email} for agent {agent_name}")
+        logger.info(f"Email sent successfully to {customer_email} for agent {agent_name} ({level})")
         return True
         
     except Exception as e:
@@ -806,6 +728,61 @@ async def admin_generate_access(
         "agent_name": info["name"],
         "level": info["level"],
     }
+
+
+@api_router.get("/access/preview-email")
+async def admin_preview_email(
+    agent_id: str,
+    level: str = "demo",
+    customer_name: str = "Obdulio",
+    key: Optional[str] = None,
+    x_service_key: Optional[str] = Header(default=None, alias="X-Service-Key"),
+):
+    """Render the welcome email HTML for QA without sending it.
+
+    Generates a real signed token tied to the requested agent + level so the
+    embedded CTA points to a working /mi-agente/:token URL on production.
+    Auth: SERVICE_API_KEY either as the `X-Service-Key` header or `?key=` query
+    param (so a plain browser link works during preview).
+    """
+    from fastapi.responses import HTMLResponse
+    from email_templates import render_email
+
+    provided = x_service_key or key
+    if not SERVICE_API_KEY or provided != SERVICE_API_KEY:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    info = get_agent_info(agent_id, level=level)
+    if not info or not info.get("deployment_id"):
+        raise HTTPException(status_code=400, detail="Agente o nivel no válido.")
+
+    token = generate_access_token(
+        customer_email="preview@psicolfis.net",
+        agent_id=info["id"],
+        level=info["level"],
+        customer_name=customer_name,
+    )
+    access_url = build_agent_access_url(token)
+    full_url = os.environ.get(f'STRIPE_FULL_URL_{info["id"].upper()}', '') or None
+
+    subject, plain, html = render_email(
+        agent_id=info["id"],
+        level=info["level"],
+        customer_name=customer_name,
+        access_url=access_url,
+        full_url=full_url,
+    )
+    # Wrap with the subject as a small banner above the email so previewers see
+    # the From / Subject metadata too.
+    preview = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Preview · {info['name']} · {info['level']}</title>
+<style>body{{margin:0;font-family:system-ui;background:#0b1020;color:#e2e8f0}}
+.meta{{background:#0f172a;color:#cbd5e1;padding:16px 22px;border-bottom:1px solid #1f2937;font-size:13px}}
+.meta b{{color:#fff}}.meta span{{color:#94a3b8;margin-right:6px}}</style></head>
+<body><div class="meta"><span>From:</span><b>PSICOLFIS.NET &lt;obdulio@psicolfis.net&gt;</b><br>
+<span>To:</span><b>{customer_name} &lt;tu-email@ejemplo.com&gt;</b><br>
+<span>Subject:</span><b>{subject}</b></div>{html}</body></html>"""
+    return HTMLResponse(content=preview)
 
 
 async def seed_reviews_if_empty():
