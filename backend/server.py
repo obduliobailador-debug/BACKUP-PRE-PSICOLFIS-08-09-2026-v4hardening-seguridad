@@ -13,6 +13,7 @@ import hashlib
 import secrets
 import random
 import time
+import json
 import jwt as pyjwt
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -993,81 +994,129 @@ async def get_checkout_status(session_id: str):
 
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
+    """Receive Stripe webhook events. Validates signature with STRIPE_WEBHOOK_SECRET
+    and, on checkout.session.completed, sends the customer their personal access
+    email with the JWT-protected link to /mi-agente/{token}.
+
+    Works for BOTH:
+      (a) sessions created via our /api/checkout/session endpoint, and
+      (b) Stripe Payment Links (no pre-existing DB row), reading agent_id and
+          level from the session.metadata configured in the Payment Link.
+    """
     try:
         body = await request.body()
         signature = request.headers.get("Stripe-Signature")
-        
+
         if not signature:
             raise HTTPException(status_code=400, detail="Missing Stripe signature")
-        
-        # Initialize Stripe
+
         stripe_api_key = os.environ.get('STRIPE_API_KEY')
+        webhook_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
         if not stripe_api_key:
             raise HTTPException(status_code=500, detail="Stripe API key not configured")
-        
-        stripe_checkout = StripeCheckout(api_key=stripe_api_key, webhook_url="")
-        
-        # Handle webhook
-        webhook_response = await stripe_checkout.handle_webhook(body, signature)
-        
-        # Update database based on webhook event
-        if webhook_response.event_type == "checkout.session.completed":
-            # Get transaction info from database
-            transaction = await db.payment_transactions.find_one(
-                {"session_id": webhook_response.session_id}
-            )
-            
-            # Update transaction status
-            await db.payment_transactions.update_one(
-                {"session_id": webhook_response.session_id},
-                {
-                    "$set": {
-                        "payment_status": webhook_response.payment_status,
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }
-                }
-            )
-            
-            # Send confirmation email if payment is complete
-            if webhook_response.payment_status == "paid" and transaction:
-                agent_id = transaction.get("agent_id", "")
-                agent_info = AGENT_PACKAGES.get(agent_id.lower(), {})
-                agent_name = agent_info.get("name", agent_id.upper())
-                
-                # Get customer email from Stripe session
-                import stripe
-                stripe.api_key = stripe_api_key
-                session = stripe.checkout.Session.retrieve(webhook_response.session_id)
-                customer_email = session.customer_details.email if session.customer_details else None
-                customer_name = session.customer_details.name if session.customer_details else "Cliente"
-                
-                if customer_email:
-                    # Determine access level: from metadata if provided, else "full"
-                    purchase_metadata = transaction.get("metadata", {}) or {}
-                    level = (purchase_metadata.get("level")
-                             or webhook_response.metadata.get("level")
-                             if hasattr(webhook_response, "metadata") and webhook_response.metadata
-                             else purchase_metadata.get("level"))
-                    level = (level or "full").lower()
-                    if level not in ("demo", "full"):
-                        level = "full"
+        if not webhook_secret:
+            raise HTTPException(status_code=500, detail="Stripe webhook secret not configured")
 
-                    email_sent = send_purchase_email(
-                        customer_email=customer_email,
-                        customer_name=customer_name or "Cliente",
-                        agent_name=agent_name,
-                        agent_id=agent_id,
-                        level=level,
-                    )
-                    if email_sent:
-                        logger.info(f"Confirmation email sent to {customer_email}")
-                    else:
-                        logger.warning(f"Failed to send email to {customer_email}")
-            
-            logger.info(f"Webhook processed for session {webhook_response.session_id}")
-        
+        import stripe
+        stripe.api_key = stripe_api_key
+
+        # Verify signature first; then parse the raw JSON body directly so we
+        # work with plain dicts (StripeObject does not expose .get()).
+        try:
+            stripe.Webhook.construct_event(
+                payload=body,
+                sig_header=signature,
+                secret=webhook_secret,
+            )
+        except stripe.error.SignatureVerificationError as e:
+            logger.warning(f"Stripe webhook signature verification failed: {e}")
+            raise HTTPException(status_code=400, detail="Invalid signature")
+        except Exception as e:
+            logger.error(f"Stripe webhook parse error: {e}")
+            raise HTTPException(status_code=400, detail="Invalid payload")
+
+        event = json.loads(body.decode("utf-8"))
+
+        event_type = event.get("type")
+        if event_type != "checkout.session.completed":
+            # Acknowledge other events but ignore them
+            return JSONResponse(content={"status": "ignored", "type": event_type}, status_code=200)
+
+        session_obj = event["data"]["object"]
+        session_id = session_obj.get("id")
+        payment_status = session_obj.get("payment_status")
+
+        # Pull metadata: prefer the session.metadata (set on Payment Links and Checkout)
+        session_metadata = dict(session_obj.get("metadata") or {})
+        agent_id = (session_metadata.get("agent_id") or "").strip().lower()
+        level = (session_metadata.get("level") or "full").strip().lower()
+        if level not in ("demo", "full"):
+            level = "full"
+
+        # Fallback: lookup in our DB if metadata isn't on the session (legacy flow)
+        if not agent_id:
+            existing = await db.payment_transactions.find_one({"session_id": session_id})
+            if existing:
+                agent_id = (existing.get("agent_id") or "").strip().lower()
+                meta = existing.get("metadata") or {}
+                if not level or level == "full":
+                    level = (meta.get("level") or level or "full").lower()
+
+        # Customer info from the session
+        customer_details = session_obj.get("customer_details") or {}
+        customer_email = customer_details.get("email") if customer_details else None
+        customer_name = (customer_details.get("name") if customer_details else None) or "Cliente"
+
+        # Update or insert payment transaction record
+        update_doc = {
+            "session_id": session_id,
+            "agent_id": agent_id,
+            "amount": (session_obj.get("amount_total") or 0) / 100,
+            "currency": session_obj.get("currency") or "eur",
+            "payment_status": payment_status or "unknown",
+            "customer_email": customer_email,
+            "customer_name": customer_name,
+            "metadata": {**session_metadata, "level": level},
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.payment_transactions.update_one(
+            {"session_id": session_id},
+            {
+                "$set": update_doc,
+                "$setOnInsert": {
+                    "id": str(uuid.uuid4()),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                },
+            },
+            upsert=True,
+        )
+
+        # Send the access email only on a real successful payment
+        if payment_status == "paid" and customer_email and agent_id:
+            agent_info = AGENT_CATALOGUE.get(agent_id, {})
+            agent_name = agent_info.get("name", agent_id.upper())
+
+            email_sent = send_purchase_email(
+                customer_email=customer_email,
+                customer_name=customer_name,
+                agent_name=agent_name,
+                agent_id=agent_id,
+                level=level,
+            )
+            if email_sent:
+                logger.info(f"Access email sent to {customer_email} for {agent_id} ({level})")
+            else:
+                logger.warning(f"Failed to send access email to {customer_email} for session {session_id}")
+        else:
+            logger.info(
+                f"Webhook processed but no email sent. session={session_id} "
+                f"paid={payment_status} agent={agent_id} email={customer_email}"
+            )
+
         return JSONResponse(content={"status": "success"}, status_code=200)
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error processing webhook: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
