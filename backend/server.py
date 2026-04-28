@@ -128,7 +128,11 @@ def generate_access_token(
 
 
 def decode_access_token(token: str) -> Dict:
-    """Validate and decode a JWT access token. Raises HTTPException on failure."""
+    """Validate and decode a JWT access token. Raises HTTPException on failure.
+
+    Also checks an optional MongoDB denylist (collection `revoked_tokens`)
+    keyed by the JWT `jti`, so admin-revoked links stop working immediately.
+    """
     try:
         payload = pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except pyjwt.ExpiredSignatureError:
@@ -138,6 +142,17 @@ def decode_access_token(token: str) -> Dict:
     if not payload.get("agent") or not payload.get("sub"):
         raise HTTPException(status_code=401, detail="Token de acceso incompleto.")
     return payload
+
+
+async def is_token_revoked(jti: str) -> bool:
+    if not jti:
+        return False
+    try:
+        doc = await db.revoked_tokens.find_one({"jti": jti}, {"_id": 0, "jti": 1})
+        return bool(doc)
+    except Exception as e:
+        logger.error(f"revoked_tokens lookup failed: {e}")
+        return False
 
 
 def build_agent_access_url(token: str) -> str:
@@ -681,6 +696,8 @@ async def validate_access_token(token: str):
     leaves the server-side configuration.
     """
     payload = decode_access_token(token)
+    if await is_token_revoked(payload.get("jti", "")):
+        raise HTTPException(status_code=401, detail="Este enlace ha sido revocado. Contacta con nosotros si necesitas un nuevo acceso.")
     agent_id = payload.get("agent")
     level = payload.get("level", "full")
     info = get_agent_info(agent_id, level=level)
@@ -1009,6 +1026,190 @@ async def admin_delete_review(
     return {"success": True}
 
 
+# ---- Admin: regalar accesos manualmente ----------------------------------
+
+class AdminAccessLinkRequest(BaseModel):
+    customer_email: EmailStr
+    customer_name: Optional[str] = ""
+    agent_id: str
+    level: str = "full"  # "demo" or "full"
+    days_valid: Optional[int] = None
+    send_email: bool = True
+
+
+def _decode_jti(token: str) -> str:
+    try:
+        payload = pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload.get("jti", "")
+    except Exception:
+        return ""
+
+
+async def _create_and_persist_access_link(
+    *,
+    admin_email: str,
+    customer_email: str,
+    customer_name: str,
+    agent_id: str,
+    level: str,
+    days_valid: Optional[int],
+    send_email: bool,
+) -> dict:
+    """Generate token, optionally send email, persist a record, return metadata."""
+    info = get_agent_info(agent_id, level=level)
+    if not info or not info.get("deployment_id"):
+        raise HTTPException(status_code=400, detail="Agente o nivel no válido.")
+
+    token = generate_access_token(
+        customer_email=customer_email,
+        agent_id=info["id"],
+        level=info["level"],
+        customer_name=customer_name or "",
+        days_valid=days_valid,
+    )
+    url = build_agent_access_url(token)
+    jti = _decode_jti(token)
+
+    email_status = "skipped"
+    last_sent_at = None
+    if send_email:
+        ok = send_purchase_email(
+            customer_email=customer_email,
+            customer_name=customer_name or "",
+            agent_name=info["name"],
+            agent_id=info["id"],
+            level=info["level"],
+        )
+        email_status = "sent" if ok else "failed"
+        if ok:
+            last_sent_at = datetime.now(timezone.utc).isoformat()
+
+    record = {
+        "id": str(uuid.uuid4()),
+        "jti": jti,
+        "agent_id": info["id"],
+        "agent_name": info["name"],
+        "level": info["level"],
+        "customer_email": customer_email.lower().strip(),
+        "customer_name": customer_name or "",
+        "url": url,
+        "days_valid": days_valid or ACCESS_TOKEN_DAYS,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": admin_email,
+        "email_status": email_status,
+        "last_sent_at": last_sent_at,
+        "revoked": False,
+        "revoked_at": None,
+    }
+    await db.access_links.insert_one(record)
+    record.pop("_id", None)
+    return record
+
+
+@api_router.post("/admin/access-links")
+async def admin_create_access_link(
+    payload: AdminAccessLinkRequest,
+    admin: dict = Depends(get_current_admin),
+):
+    """Generate a personal access link manually (gift / partner / replay).
+
+    If `send_email` is True, the customer receives the same welcome email
+    Stripe purchases trigger. The link plus metadata is persisted in
+    `access_links` so the admin can re-send or revoke later.
+    """
+    record = await _create_and_persist_access_link(
+        admin_email=admin["sub"],
+        customer_email=payload.customer_email,
+        customer_name=payload.customer_name or "",
+        agent_id=payload.agent_id,
+        level=payload.level,
+        days_valid=payload.days_valid,
+        send_email=payload.send_email,
+    )
+    return {"success": True, "link": record}
+
+
+@api_router.get("/admin/access-links")
+async def admin_list_access_links(admin: dict = Depends(get_current_admin)):
+    cursor = db.access_links.find({}, {"_id": 0}).sort("created_at", -1).limit(50)
+    items = await cursor.to_list(50)
+    return {"items": items, "total": len(items)}
+
+
+@api_router.post("/admin/access-links/{link_id}/resend")
+async def admin_resend_access_link(
+    link_id: str,
+    admin: dict = Depends(get_current_admin),
+):
+    rec = await db.access_links.find_one({"id": link_id}, {"_id": 0})
+    if not rec:
+        raise HTTPException(status_code=404, detail="Enlace no encontrado")
+    if rec.get("revoked"):
+        raise HTTPException(status_code=400, detail="No se puede reenviar un enlace revocado")
+
+    ok = send_purchase_email(
+        customer_email=rec["customer_email"],
+        customer_name=rec.get("customer_name", ""),
+        agent_name=rec.get("agent_name", rec.get("agent_id", "")).upper(),
+        agent_id=rec["agent_id"],
+        level=rec.get("level", "full"),
+    )
+    if not ok:
+        raise HTTPException(status_code=500, detail="No se pudo enviar el email. Revisa la configuración SMTP.")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.access_links.update_one(
+        {"id": link_id},
+        {"$set": {"email_status": "sent", "last_sent_at": now_iso}},
+    )
+    return {"success": True, "last_sent_at": now_iso}
+
+
+@api_router.post("/admin/access-links/{link_id}/revoke")
+async def admin_revoke_access_link(
+    link_id: str,
+    admin: dict = Depends(get_current_admin),
+):
+    rec = await db.access_links.find_one({"id": link_id}, {"_id": 0})
+    if not rec:
+        raise HTTPException(status_code=404, detail="Enlace no encontrado")
+    if rec.get("revoked"):
+        return {"success": True, "already": True}
+
+    jti = rec.get("jti", "")
+    if jti:
+        await db.revoked_tokens.update_one(
+            {"jti": jti},
+            {"$set": {
+                "jti": jti,
+                "link_id": link_id,
+                "customer_email": rec.get("customer_email"),
+                "revoked_at": datetime.now(timezone.utc).isoformat(),
+                "revoked_by": admin["sub"],
+            }},
+            upsert=True,
+        )
+
+    await db.access_links.update_one(
+        {"id": link_id},
+        {"$set": {"revoked": True, "revoked_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    return {"success": True}
+
+
+@api_router.delete("/admin/access-links/{link_id}")
+async def admin_delete_access_link(
+    link_id: str,
+    admin: dict = Depends(get_current_admin),
+):
+    """Remove the link from history. Does NOT auto-revoke; call /revoke first
+    if you want the link to stop working."""
+    res = await db.access_links.delete_one({"id": link_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Enlace no encontrado")
+    return {"success": True}
+
+
 
 async def seed_reviews_if_empty():
     """Insert a few realistic starter reviews if the collection is empty."""
@@ -1071,6 +1272,9 @@ async def on_startup():
         await db.admin_users.create_index("email", unique=True)
         await db.login_attempts.create_index("identifier")
         await db.login_attempts.create_index([("ts", 1)])
+        await db.access_links.create_index([("created_at", -1)])
+        await db.access_links.create_index("id", unique=True)
+        await db.revoked_tokens.create_index("jti", unique=True)
     except Exception as e:
         logger.error(f"Index creation error: {e}")
 

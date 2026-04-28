@@ -3955,3 +3955,77 @@ iframe.goog-te-banner-frame { display: none !important; }
 /* Hide Google Translate widget on /admin (it would clash with header) */
 body:has(.admin-shell) #google_translate_wrapper,
 body:has(.admin-login-page) #google_translate_wrapper { display: none !important; }
+
+
+/* Admin: Regalar acceso (gift access) */
+.admin-gift-form {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+  padding: 22px; margin-bottom: 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+.admin-gift-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+@media (max-width: 720px) {
+  .admin-gift-grid { grid-template-columns: 1fr; }
+}
+.admin-gift-form label {
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: 13px; font-weight: 600; color: #334155;
+}
+.admin-gift-form input[type="text"],
+.admin-gift-form input[type="email"],
+.admin-gift-form input[type="number"],
+.admin-gift-form select {
+  padding: 10px 13px; border: 1px solid #cbd5e1; border-radius: 10px;
+  font-size: 14px; background: #fff; color: #0f172a;
+}
+.admin-gift-form input:focus,
+.admin-gift-form select:focus {
+  outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+}
+.admin-gift-checkbox {
+  flex-direction: row !important; align-items: center; gap: 10px;
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+  padding: 12px 14px;
+}
+.admin-gift-checkbox input { width: 18px; height: 18px; accent-color: #3b82f6; }
+.admin-gift-actions { margin-top: 18px; display: flex; justify-content: flex-end; }
+.admin-gift-actions button {
+  padding: 11px 22px; border: none; border-radius: 10px;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: #fff;
+  font-weight: 800; font-size: 14px; cursor: pointer; letter-spacing: 0.02em;
+}
+.admin-gift-actions button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.admin-gift-feedback {
+  padding: 12px 16px; border-radius: 10px; font-size: 14px; margin-bottom: 14px;
+  border: 1px solid transparent;
+}
+.admin-gift-feedback.ok { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+.admin-gift-feedback.warn { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.admin-gift-feedback.error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+
+.admin-gift-last {
+  background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px;
+  padding: 16px 18px; margin-bottom: 22px;
+}
+.admin-gift-last-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  font-size: 14px; color: #334155; margin-bottom: 10px;
+}
+.admin-gift-url-row { display: flex; gap: 8px; }
+.admin-gift-url-row input {
+  flex: 1; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px; background: #fff; color: #0f172a;
+}
+.admin-gift-url-row button {
+  padding: 0 16px; border: 1px solid #0f172a; background: #0f172a;
+  color: #fff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px;
+}
+.admin-gift-url-row button:hover { background: #1e293b; }
+
+.admin-gift-history-title { margin: 26px 0 12px; font-size: 16px; color: #0f172a; }
+.admin-item.is-revoked { opacity: 0.6; background: #fafafa; }
+.admin-item-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
