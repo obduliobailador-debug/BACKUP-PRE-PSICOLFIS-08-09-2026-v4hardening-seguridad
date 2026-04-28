@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, Request, HTTPException, Header
+from fastapi import FastAPI, APIRouter, Request, HTTPException, Header, Depends
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
@@ -568,6 +568,7 @@ async def submit_budget_request(request: BudgetRequest):
         "mensaje": mensaje,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "email_sent": False,
+        "read": False,
     }
 
     email_sent = send_budget_request_email(
@@ -814,6 +815,190 @@ async def admin_preview_email(
     return HTMLResponse(content=preview)
 
 
+# ---- Admin auth + back-office endpoints --------------------------------------
+
+import bcrypt as _bcrypt
+
+ADMIN_EMAIL = (os.environ.get("ADMIN_EMAIL") or "").lower().strip()
+_ADMIN_PASSWORD_PLAIN = os.environ.get("ADMIN_PASSWORD") or ""
+ADMIN_TOKEN_HOURS = int(os.environ.get("ADMIN_TOKEN_HOURS", "8"))
+LOGIN_LOCK_MAX_ATTEMPTS = 5
+LOGIN_LOCK_WINDOW_MIN = 15
+
+
+def _hash_password(plain: str) -> str:
+    return _bcrypt.hashpw(plain.encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
+
+
+def _verify_password(plain: str, hashed: str) -> bool:
+    if not plain or not hashed:
+        return False
+    try:
+        return _bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    except Exception:
+        return False
+
+
+def _create_admin_token(email: str) -> str:
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": email.lower(),
+        "role": "admin",
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(hours=ADMIN_TOKEN_HOURS)).timestamp()),
+        "jti": uuid.uuid4().hex,
+    }
+    return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+async def seed_admin_if_needed():
+    if not ADMIN_EMAIL or not _ADMIN_PASSWORD_PLAIN:
+        logger.warning("Admin not seeded - ADMIN_EMAIL or ADMIN_PASSWORD missing in .env")
+        return
+    existing = await db.admin_users.find_one({"email": ADMIN_EMAIL})
+    if not existing:
+        await db.admin_users.insert_one({
+            "id": str(uuid.uuid4()),
+            "email": ADMIN_EMAIL,
+            "password_hash": _hash_password(_ADMIN_PASSWORD_PLAIN),
+            "role": "admin",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        logger.info(f"Admin seeded: {ADMIN_EMAIL}")
+    elif not _verify_password(_ADMIN_PASSWORD_PLAIN, existing.get("password_hash", "")):
+        await db.admin_users.update_one(
+            {"email": ADMIN_EMAIL},
+            {"$set": {"password_hash": _hash_password(_ADMIN_PASSWORD_PLAIN)}},
+        )
+        logger.info(f"Admin password rotated: {ADMIN_EMAIL}")
+
+
+async def get_current_admin(request: Request) -> dict:
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    token = auth[7:].strip()
+    try:
+        payload = pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except pyjwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Sesion expirada")
+    except pyjwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Token no valido")
+    if payload.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return payload
+
+
+class AdminLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+@api_router.post("/admin/login")
+async def admin_login(payload: AdminLoginRequest, request: Request):
+    email = payload.email.lower().strip()
+    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown").split(",")[0].strip()
+    identifier = f"{ip}:{email}"
+    now = datetime.now(timezone.utc)
+    window_start = now - timedelta(minutes=LOGIN_LOCK_WINDOW_MIN)
+
+    recent_failed = await db.login_attempts.count_documents({
+        "identifier": identifier,
+        "ts": {"$gte": window_start.isoformat()},
+        "success": False,
+    })
+    if recent_failed >= LOGIN_LOCK_MAX_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="Demasiados intentos. Espera unos minutos.")
+
+    user = await db.admin_users.find_one({"email": email})
+    ok = bool(user) and _verify_password(payload.password, user.get("password_hash", ""))
+
+    await db.login_attempts.insert_one({
+        "identifier": identifier,
+        "email": email,
+        "ip": ip,
+        "ts": now.isoformat(),
+        "success": ok,
+    })
+
+    if not ok:
+        raise HTTPException(status_code=401, detail="Email o contrasena incorrectos")
+
+    token = _create_admin_token(email)
+    return {"token": token, "email": email, "expires_in_hours": ADMIN_TOKEN_HOURS}
+
+
+@api_router.get("/admin/me")
+async def admin_me(admin: dict = Depends(get_current_admin)):
+    return {"email": admin["sub"], "role": admin["role"], "exp": admin["exp"]}
+
+
+@api_router.get("/admin/budget-requests")
+async def admin_list_budget_requests(admin: dict = Depends(get_current_admin)):
+    cursor = db.budget_requests.find({}, {"_id": 0}).sort("created_at", -1).limit(500)
+    items = await cursor.to_list(500)
+    unread = await db.budget_requests.count_documents({"read": {"$ne": True}})
+    total = await db.budget_requests.count_documents({})
+    return {"items": items, "unread": unread, "total": total}
+
+
+class MarkReadRequest(BaseModel):
+    read: bool = True
+
+
+@api_router.patch("/admin/budget-requests/{request_id}")
+async def admin_mark_budget_request(
+    request_id: str,
+    payload: MarkReadRequest,
+    admin: dict = Depends(get_current_admin),
+):
+    update = {"read": payload.read}
+    if payload.read:
+        update["read_at"] = datetime.now(timezone.utc).isoformat()
+    else:
+        update["read_at"] = None
+    res = await db.budget_requests.update_one({"id": request_id}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+    return {"success": True, "read": payload.read}
+
+
+@api_router.get("/admin/reviews")
+async def admin_list_reviews(admin: dict = Depends(get_current_admin)):
+    cursor = db.reviews.find({}, {"_id": 0}).sort("created_at", -1).limit(500)
+    items = await cursor.to_list(500)
+    pending = await db.reviews.count_documents({"approved": False})
+    return {"items": items, "pending": pending, "total": len(items)}
+
+
+class ReviewModerationRequest(BaseModel):
+    approved: bool
+
+
+@api_router.patch("/admin/reviews/{review_id}")
+async def admin_moderate_review(
+    review_id: str,
+    payload: ReviewModerationRequest,
+    admin: dict = Depends(get_current_admin),
+):
+    res = await db.reviews.update_one({"id": review_id}, {"$set": {"approved": payload.approved}})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Reseña no encontrada")
+    return {"success": True, "approved": payload.approved}
+
+
+@api_router.delete("/admin/reviews/{review_id}")
+async def admin_delete_review(
+    review_id: str,
+    admin: dict = Depends(get_current_admin),
+):
+    res = await db.reviews.delete_one({"id": review_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Reseña no encontrada")
+    return {"success": True}
+
+
+
 async def seed_reviews_if_empty():
     """Insert a few realistic starter reviews if the collection is empty."""
     existing = await db.reviews.count_documents({})
@@ -864,9 +1049,19 @@ async def seed_reviews_if_empty():
 @app.on_event("startup")
 async def on_startup():
     try:
+        await seed_admin_if_needed()
+    except Exception as e:
+        logger.error(f"Admin seed error: {e}")
+    try:
         await seed_reviews_if_empty()
     except Exception as e:
         logger.error(f"Seed error: {e}")
+    try:
+        await db.admin_users.create_index("email", unique=True)
+        await db.login_attempts.create_index("identifier")
+        await db.login_attempts.create_index([("ts", 1)])
+    except Exception as e:
+        logger.error(f"Index creation error: {e}")
 
 
 @api_router.post("/checkout/session")
