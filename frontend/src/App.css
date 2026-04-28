@@ -3732,13 +3732,17 @@ body {
   margin: 0;
 }
 .buy-button.buy-demo {
-  background: rgba(148, 163, 184, 0.18);
-  color: #1e293b;
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.18);
+  color: #ffffff;
+  border: 1.5px solid rgba(96, 165, 250, 0.7);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 .buy-button.buy-demo:hover {
-  background: rgba(59, 130, 246, 0.18);
-  color: #1e3a8a;
+  background: rgba(59, 130, 246, 0.32);
+  border-color: rgba(147, 197, 253, 0.9);
+  color: #ffffff;
 }
 .buy-button.buy-full {
   background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
