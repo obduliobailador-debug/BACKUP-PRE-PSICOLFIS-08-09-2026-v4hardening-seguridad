@@ -963,6 +963,17 @@ async def admin_mark_budget_request(
     return {"success": True, "read": payload.read}
 
 
+@api_router.delete("/admin/budget-requests/{request_id}")
+async def admin_delete_budget_request(
+    request_id: str,
+    admin: dict = Depends(get_current_admin),
+):
+    res = await db.budget_requests.delete_one({"id": request_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+    return {"success": True}
+
+
 @api_router.get("/admin/reviews")
 async def admin_list_reviews(admin: dict = Depends(get_current_admin)):
     cursor = db.reviews.find({}, {"_id": 0}).sort("created_at", -1).limit(500)

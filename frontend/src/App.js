@@ -2053,6 +2053,12 @@ const AdminBudgets = ({ token, onAuthFail }) => {
     reload();
   };
 
+  const removeBudget = async (id) => {
+    if (!window.confirm("¿Eliminar esta solicitud permanentemente?")) return;
+    await api.del(`/admin/budget-requests/${id}`);
+    reload();
+  };
+
   const filtered = (data.items || []).filter((x) =>
     filter === "all" ? true : filter === "unread" ? !x.read : !!x.read
   );
@@ -2104,6 +2110,9 @@ const AdminBudgets = ({ token, onAuthFail }) => {
                   <a className="btn-link" href={`mailto:${b.email}?subject=Re:%20Tu%20solicitud%20PSICOLFIS.NET`}>
                     Responder
                   </a>
+                  <button className="danger" onClick={() => removeBudget(b.id)}>
+                    Eliminar
+                  </button>
                 </div>
               </div>
               {expanded[b.id] && b.mensaje && (
