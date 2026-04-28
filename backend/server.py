@@ -1150,19 +1150,24 @@ async def admin_resend_access_link(
     ok = send_purchase_email(
         customer_email=rec["customer_email"],
         customer_name=rec.get("customer_name", ""),
-        agent_name=rec.get("agent_name", rec.get("agent_id", "")).upper(),
+        agent_name=rec.get("agent_name") or rec.get("agent_id", "").upper(),
         agent_id=rec["agent_id"],
         level=rec.get("level", "full"),
     )
-    if not ok:
-        raise HTTPException(status_code=500, detail="No se pudo enviar el email. Revisa la configuración SMTP.")
-
     now_iso = datetime.now(timezone.utc).isoformat()
     await db.access_links.update_one(
         {"id": link_id},
-        {"$set": {"email_status": "sent", "last_sent_at": now_iso}},
+        {"$set": {
+            "email_status": "sent" if ok else "failed",
+            "last_sent_at": now_iso if ok else rec.get("last_sent_at"),
+        }},
     )
-    return {"success": True, "last_sent_at": now_iso}
+    return {
+        "success": ok,
+        "email_status": "sent" if ok else "failed",
+        "last_sent_at": now_iso if ok else rec.get("last_sent_at"),
+        "message": "Email reenviado correctamente." if ok else "No se pudo enviar el email. Revisa la configuración SMTP.",
+    }
 
 
 @api_router.post("/admin/access-links/{link_id}/revoke")

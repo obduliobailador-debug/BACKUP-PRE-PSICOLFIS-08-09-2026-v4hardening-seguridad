@@ -1,179 +1,179 @@
-# PRD — PSICOLFIS.NET Landing (versión final pre-deploy)
+# PRD — PSICOLFIS.NET
 
 ## 1. Problema original
-Mejorar la landing de PSICOLFIS.NET (clonada desde GitHub:
-`obduliobailador-debug/Psicofis-actualizada-FINAL-4--9-01-2026`).
-Se mantiene el diseño y estructura original, añadiendo correcciones de
-bugs, nuevas funcionalidades, integraciones, ajustes visuales y SEO
-optimizado para Google.
+Mejorar la landing de PSICOLFIS.NET (clonada del repo
+`obduliobailador-debug/Psicofis-actualizada-FINAL-4--9-01-2026`) y
+construir un **ecosistema cerrado**: tras un pago en Stripe, el cliente
+recibe un email con un enlace único que abre el agente IA (Pickaxe)
+embebido dentro del propio dominio `psicolfis.net`, sin redirecciones a
+terceros. El admin (Obdulio) gestiona todo desde un back-office en
+`/admin`: solicitudes de presupuesto, reseñas y la posibilidad de
+**regalar accesos** manualmente (saltándose Stripe).
 
 ## 2. Arquitectura
 - **Frontend**: React 19 + CRA/CRACO + Tailwind + Radix UI.
-  Rutas: `/`, `/agentes`, `/success`, `/cancel`, `/legal`.
-- **Backend**: FastAPI + Motor (MongoDB async) + SMTP SSL.
-- **Pagos**: Payment Links directos de Stripe (sin API de checkout
-  server-side). IRIS / ALEX / UMBRAL van cada uno a su URL de Stripe.
-- **Email**: SMTP propio `psicolfis.net:465 (SSL)`, usuario
-  `obdulio@psicolfis.net` — envía formularios de presupuesto y notifica
-  reseñas nuevas.
-- **Base de datos**: MongoDB (collections `budget_requests`, `reviews`).
+  Rutas: `/`, `/agentes`, `/success`, `/cancel`, `/legal`,
+  `/mi-agente/:token` y `/admin`.
+- **Backend**: FastAPI + Motor (Mongo async) + SMTP SSL + Stripe + JWT
+  (PyJWT) + bcrypt.
+- **Pagos**:
+  - Payment Links de Stripe (IRIS/ALEX/UMBRAL) con `metadata`
+    (`agent_id`, `level`) configurada vía API.
+  - Webhook `POST /api/webhook/stripe` (firma verificada) que tras
+    `checkout.session.completed` envía email con el enlace único.
+- **Acceso a agentes**: JWT firmado con `JWT_SECRET`; el cliente entra
+  por `/mi-agente/:token` y la SPA llama a `/api/access/validate` para
+  obtener el `deployment_id` de Pickaxe y embeber el iframe.
+- **Revocación**: colección `revoked_tokens` (denylist por `jti`).
+- **Email**: SMTP propio `psicolfis.net:465 (SSL)` con plantillas
+  dinámicas por agente (`/app/backend/email_templates.py`) e imágenes
+  extraídas de los vídeos.
+- **Base de datos**: MongoDB con colecciones `budget_requests`,
+  `reviews`, `payment_transactions`, `admin_users`, `login_attempts`,
+  `access_links`, `revoked_tokens`.
+- **i18n**: Widget de Google Translate (22 idiomas, incluido Rumano)
+  en el header (oculto en `/admin`).
 
 ## 3. Personas / Audiencia
 - Autónomos y pequeños negocios en España que buscan automatizar
-  tareas repetitivas con IA (atención al cliente, redacción, leads).
+  tareas con IA (atención al cliente, redacción, leads).
 - Perfiles secundarios: fisioterapeutas, coaches, consultores,
-  academias online, clínicas.
+  academias online, clínicas estéticas.
 
-## 4. Core requirements (estáticos)
-1. Landing pública con los 3 agentes (IRIS, ALEX, UMBRAL) y popup
-   promocional inicial con temporizador.
-2. Botones "Lo quiero" redirigen a Payment Links de Stripe:
-   - IRIS: https://buy.stripe.com/cNicMY9Jf5NffL30aH7ok00
-   - ALEX: https://buy.stripe.com/aFabIU2gN8ZraqJg9F7ok01
-   - UMBRAL: https://buy.stripe.com/14A5kwbRnejL56paPl7ok02
-3. Aviso "Oferta limitada · solo demostración real" en cada 50€.
-4. Sección de precios con 3 planes (Starter, Professional, Enterprise)
-   y botones "Solicitar Presupuesto" que abren modal con formulario.
-5. Formulario de presupuesto con:
-   - Campos obligatorios: nombre, email, plan, captcha.
-   - Campos opcionales: teléfono, agente de interés, mensaje libre.
-   - Validación server-side + captcha HMAC + honeypot anti-spam.
-   - Envío por email a `obdulio@psicolfis.net` + persistencia en Mongo.
-6. Módulo de reseñas con:
-   - Sección pública "Lo que dicen nuestros clientes" con grid de
-     testimonios + rating global (estrellas doradas).
-   - Formulario "Dejar mi reseña" con captcha + honeypot.
-   - JSON-LD `AggregateRating` dinámico (SEO → rich snippets con
-     estrellas en Google).
-   - Seed inicial con 4 reseñas realistas.
-7. Botón WhatsApp (verde) junto a "Contactar ahora" en FAQ; número
-   oculto del source HTML vía redirect backend `/api/whatsapp`.
-8. Navegación: enlaces anchor a secciones + "Empezar Ahora" + "Ponte
-   en contacto" (abre formulario).
-9. Secciones legales (Aviso Legal, Privacidad, Cookies) + banner
-   cookies + rutas `/success`, `/cancel`, `/legal`.
+## 4. Core requirements
+1. Landing pública con los 3 agentes (IRIS, ALEX, UMBRAL).
+2. Botones "Lo quiero" → Payment Links de Stripe.
+3. Formulario de presupuesto + captcha HMAC + honeypot.
+4. Reseñas + AggregateRating JSON-LD + moderación.
+5. Tras pagar: email automático con enlace JWT a `/mi-agente/:token`
+   donde el agente Pickaxe está embebido (sin salir del dominio).
+6. **Panel admin `/admin`** con:
+   - Login (bcrypt + lockout tras 5 intentos en 15 min).
+   - Solicitudes de presupuesto (ver / marcar leída / eliminar /
+     responder por mailto).
+   - Reseñas (aprobar / despublicar / eliminar).
+   - **Regalar acceso**: formulario para generar enlace manual,
+     enviar email automáticamente, ver historial, copiar enlace,
+     reenviar email, revocar (denylist) y eliminar del historial.
+7. SEO: title/description/canonical, Open Graph, JSON-LD, sitemap,
+   robots, alt texts, AggregateRating.
+8. Botón WhatsApp con número oculto (redirect backend).
+9. Traductor Google con 22 idiomas.
 
-## 5. Lo implementado (por sesiones, con fechas 2026-01-21)
-### Sesión 1 — Importación y setup
-- Clonado del repo GitHub e importado a `/app`, preservando `.env`.
-- Dependencias instaladas (yarn + pip).
-- Configuración SMTP (servidor, puerto 465 SSL, usuario, contraseña).
+## 5. Lo implementado (fechas relevantes)
+### Sesiones 1-9 (enero 2026)
+Importación, formularios, Stripe Payment Links, captcha, WhatsApp,
+animaciones, SEO Fase 1, reseñas, JSON-LD AggregateRating, ajustes
+visuales, badge Emergent, contenido legal.
 
-### Sesión 2 — Formularios y Stripe
-- Botones de compra redirigen a Payment Links de Stripe.
-- Endpoint `POST /api/contact/budget` con validación, email HTML
-  formateado (Reply-To al cliente) y persistencia en Mongo.
-- Estados "Enviando..." / éxito / error visibles en formulario.
+### Sesión 10-11 (feb 2026) — Universo Psicolfis.net
+- Webhook Stripe firmado con `STRIPE_WEBHOOK_SECRET`, lectura de
+  `metadata.agent_id` y `metadata.level` desde Payment Links.
+- Generación de JWT firmado con expiración configurable
+  (`ACCESS_TOKEN_DAYS=365` por defecto).
+- Ruta SPA `/mi-agente/:token` que valida en `/api/access/validate`
+  y embebe el iframe de Pickaxe.
+- Plantillas de email dinámicas (texto+HTML) con foto del agente.
+- Widget de Google Translate (22 idiomas).
+- Limpieza de despliegues antiguos en Emergent (ahorro ~300 cr/mes).
 
-### Sesión 3 — Ajustes visuales iteración 1
-- Nombre del agente sobre los vídeos reducido de 32px → 18px.
-- Botón "Ponte en contacto" en navbar (azul/violeta).
-- FAQ "Contactar ahora" (antes `mailto:`) ahora abre el formulario.
+### Sesión 12 (feb 2026) — Panel Admin Fase 1
+- Backend: `bcrypt` + `PyJWT` + `admin_users` + `login_attempts`,
+  rate-limit 5/15min, endpoints `/api/admin/login`, `/me`,
+  `/budget-requests`, `/reviews`.
+- Frontend: `/admin` con login (toggle mostrar contraseña), 2 tabs.
 
-### Sesión 4 — Formulario enriquecido + Captcha
-- Desplegable de agente (Sin preferencia / IRIS / ALEX / UMBRAL / Varios).
-- Textarea amplia "¿En qué proyecto podemos ayudarte?".
-- Captcha matemático (suma 1-9) firmado con HMAC SHA-256, TTL 10 min,
-  stateless (sin DB).
-- Honeypot silencioso (`website`).
-
-### Sesión 5 — WhatsApp + Animaciones
-- Botón WhatsApp (verde oficial, icono SVG) junto a FAQ contact.
-- Número de teléfono **oculto del HTML source** vía `GET /api/whatsapp`
-  que emite 302 redirect a `wa.me/34670716305?text=...`.
-- Hook `useScrollReveal` con IntersectionObserver aplicado a 19
-  elementos (títulos, tarjetas, comparativas).
-- Respeto `prefers-reduced-motion` para accesibilidad.
-
-### Sesión 6 — SEO Fase 1 (completa)
-- `<html lang="es">`, title/description optimizados, Open Graph,
-  Twitter Cards, canonical `https://psicolfis.net/`.
-- `robots.txt` + `sitemap.xml` en `/frontend/public/`.
-- 4 bloques JSON-LD estáticos: Organization, FAQPage (12 preguntas),
-  3 Products, WebSite.
-- Hook `usePageSeo` para title/description/canonical/robots dinámicos
-  por ruta. `/success` y `/cancel` llevan `noindex`.
-- Alt texts descriptivos + `width`/`height` + `loading="lazy"` en
-  imágenes bajo el fold.
-- `<noscript>` con contenido mínimo para crawlers sin JS.
-
-### Sesión 7 — Reseñas + AggregateRating
-- Modelos `Review` en backend con validación (min 20 chars, captcha).
-- Endpoints `GET /api/reviews` (sin exponer emails) y `POST /api/reviews`.
-- Seed automático con 4 reseñas starter al primer arranque.
-- Sección frontend "Lo que dicen nuestros clientes" con:
-  - Resumen global con estrellas + rating promedio + total.
-  - Grid responsive de tarjetas (⭐ + cita + autor + rol).
-  - Modal "Dejar mi reseña" con rating 1-5 interactivo.
-- JSON-LD `AggregateRating` inyectado dinámicamente en `<head>`.
-- Enlace "Reseñas" añadido a la navbar.
-
-### Sesión 8 — Detalles finales
-- Copyright del footer dinámico: `{new Date().getFullYear()}`.
-- Badge Emergent → enlace de afiliado
-  `https://app.emergent.sh/register?ref=obdu291682`.
-
-### Sesión 9 — Banner modal: ajustes de tipografía/vídeo
-- Textos del banner reducidos: título 48→32px, subtitle 24→16px,
-  tagline 22→15px. Padding del overlay reducido.
-- Vídeos de agentes: cambio `object-fit: cover` → `contain` y altura
-  300→420px para que se vea completo (sin recortes) el vídeo
-  vertical 1304×1588 incluyendo el texto azul embedido.
+### Sesión 13 (feb 2026) — Regalar acceso (ESTE FORK)
+- Modelo `AdminAccessLinkRequest`, helper
+  `_create_and_persist_access_link`.
+- Endpoints (admin auth):
+  - `POST /api/admin/access-links` (crea + opcionalmente envía
+    email + persiste).
+  - `GET /api/admin/access-links` (últimos 50).
+  - `POST /api/admin/access-links/{id}/resend` (devuelve 200 con
+    `email_status: sent|failed`, no 500).
+  - `POST /api/admin/access-links/{id}/revoke` (añade jti a
+    `revoked_tokens`).
+  - `DELETE /api/admin/access-links/{id}` (solo borra del historial).
+- `decode_access_token` ahora consulta `revoked_tokens` antes de
+  permitir el acceso.
+- Frontend: 3ª pestaña **"Regalar acceso"** con formulario,
+  feedback OK/Warn/Error, tarjeta del último enlace generado con
+  botón "Copiar", e historial con acciones (Copiar / Reenviar /
+  Revocar / Eliminar).
+- Tests pytest en `/app/tests/test_admin_access_links.py` (22/26
+  pass; los 3 falsos negativos son timeouts del gateway preview).
 
 ## 6. Ficheros clave
 - `/app/backend/server.py` — FastAPI con todos los endpoints.
-- `/app/backend/.env` — MONGO_URL, DB_NAME, STRIPE, SMTP.
-- `/app/backend/requirements.txt` — dependencias Python.
-- `/app/frontend/src/App.js` — React SPA completo.
-- `/app/frontend/src/App.css` — todos los estilos.
-- `/app/frontend/public/index.html` — SEO + JSON-LD + badge.
-- `/app/frontend/public/robots.txt`, `sitemap.xml`.
-- `/app/frontend/public/videos/*.mp4` — 4 vídeos agentes (no tocar).
+- `/app/backend/email_templates.py` — Plantillas HTML por agente.
+- `/app/backend/.env` — Mongo, SMTP, Stripe, JWT, ADMIN, PICKAXE.
+- `/app/frontend/src/App.js` — SPA monolítica
+  (Home + Agentes + Success/Cancel + Legal + MiAgente + Admin).
+- `/app/frontend/src/App.css` — Estilos completos.
+- `/app/tests/test_admin_access_links.py` — Suite pytest.
 
-## 7. Endpoints backend
+## 7. Endpoints backend (resumen)
 | Método | Ruta | Descripción |
 |:-:|---|---|
-| GET | /api/ | Health check |
-| GET | /api/whatsapp | 302 redirect a WhatsApp (oculta número) |
-| GET | /api/captcha | Devuelve challenge HMAC firmado |
-| POST | /api/contact/budget | Recibe formulario, valida captcha, envía email |
-| GET | /api/reviews | Lista reseñas aprobadas con rating global |
-| POST | /api/reviews | Crea reseña con validación + captcha |
-| POST | /api/checkout/session | (Legacy, no usado en frontend actual) |
-| GET | /api/checkout/status/{id} | (Legacy) |
-| POST | /api/webhook/stripe | (Legacy) |
-| GET | /api/agent/{id}/data | Datos públicos por agente |
+| GET | /api/whatsapp | Redirect 302 oculto |
+| GET | /api/captcha | Challenge HMAC |
+| POST | /api/contact/budget | Formulario + email |
+| GET/POST | /api/reviews | Listar/crear |
+| POST | /api/checkout/session | (Legacy) |
+| POST | /api/webhook/stripe | Webhook firmado |
+| GET | /api/access/validate | Valida JWT + denylist |
+| POST | /api/access/generate | Legacy (service-key) |
+| POST | /api/admin/login | bcrypt + JWT 8h |
+| GET | /api/admin/me | Sesion actual |
+| GET/PATCH/DELETE | /api/admin/budget-requests | Back-office |
+| GET/PATCH/DELETE | /api/admin/reviews | Moderar |
+| POST/GET | /api/admin/access-links | Crear/listar |
+| POST | /api/admin/access-links/{id}/resend | Reenviar email |
+| POST | /api/admin/access-links/{id}/revoke | Revocar |
+| DELETE | /api/admin/access-links/{id} | Borrar del historial |
 
 ## 8. Variables de entorno (backend/.env)
 - MONGO_URL, DB_NAME
-- STRIPE_API_KEY (no usada con Payment Links, puede quedar vacía)
+- STRIPE_API_KEY (Live), STRIPE_WEBHOOK_SECRET
 - SMTP_SERVER, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM
-- WHATSAPP_NUMBER (opcional; default 34670716305)
-- WHATSAPP_DEFAULT_TEXT (opcional)
-- CAPTCHA_SECRET (opcional; se regenera si falta)
+- WHATSAPP_NUMBER, WHATSAPP_DEFAULT_TEXT
+- CAPTCHA_SECRET (opcional)
+- JWT_SECRET, ACCESS_TOKEN_DAYS (por defecto 365)
+- PUBLIC_BASE_URL (`https://psicolfis.net`)
+- ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_TOKEN_HOURS=8
+- SERVICE_API_KEY (legacy)
+- PICKAXE_DEPLOYMENT_IRIS / _ALEX / _UMBRAL [_DEMO]
+- STRIPE_FULL_URL_IRIS / _ALEX / _UMBRAL (upsell desde demo)
 
 ## 9. Pendientes / Backlog
-### P0 — Deploy y dominio (SIGUIENTE ACCIÓN DEL USUARIO)
-- [ ] Save to GitHub (backup del código actualizado)
-- [ ] Pulsar Deploy en Emergent (~50 créditos/mes)
-- [ ] Usar "Link domain → Entri" para conectar `psicolfis.net`
-- [ ] Configurar registros A/CNAME en panel DNS de GVO
-  (dejando intactos MX/SPF/DKIM del correo)
-- [ ] Enviar sitemap a Search Console tras indexarse el dominio
 
-### P1 — Mejoras de producto
-- [ ] Panel admin protegido (`/admin`) para ver solicitudes y
-  moderar reseñas sin tocar DB.
+### P0 — Próxima acción del usuario
+- [ ] **Redeploy a producción** desde Emergent (las funciones de
+      Stripe webhook, email, panel admin y "Regalar acceso" solo
+      están activas en el preview hasta el redeploy).
+- [ ] Tras redeploy: probar 1 compra demo real (50€) y validar que
+      llega el email y abre el iframe en `psicolfis.net/mi-agente/:token`.
+
+### P1 — Mejoras técnicas
+- [ ] Refactor: dividir `/app/backend/server.py` (1554 líneas) en
+      routers (`admin/`, `access/`, `payments/`, `reviews/`).
+- [ ] Refactor: dividir `/app/frontend/src/App.js` (~2400 líneas) en
+      vistas/componentes individuales.
 - [ ] Compresión de vídeos `*_sonriendo.mp4` y `preload="metadata"`.
-- [ ] Imágenes en `.webp` / `.avif` para LCP.
-- [ ] Versión en inglés (i18n) si se internacionaliza.
+- [ ] Imágenes en `.webp` / `.avif` para LCP (Core Web Vitals).
+- [ ] Investigar timeouts del gateway preview en POST de admin
+      (no afectan a producción, pero molestan en tests).
 
 ### P2 — Extras
 - [ ] Botón flotante WhatsApp en todas las páginas.
-- [ ] Integración con Google Analytics 4.
-- [ ] Blog / contenido SEO (marketing de atracción).
+- [ ] Google Analytics 4.
+- [ ] Blog / contenido SEO.
+- [ ] Versión en inglés (i18n) si se internacionaliza.
+- [ ] Endpoint preview-email en el admin UI (ya existe en backend).
 
 ## 10. Enhancement sugerido
-Añadir un campo opcional "¿Cuándo te gustaría empezar?" (Esta semana /
-Este mes / Explorando) al formulario de presupuesto. Permite priorizar
-los leads más calientes en la bandeja de entrada.
+En el panel admin, añadir un pequeño contador "Conversiones del mes"
+sobre los 3 agentes (cuántos pagos confirmados por agente en los
+últimos 30 días) usando `payment_transactions`. Permite a Obdulio ver
+de un vistazo qué agente vende mejor sin entrar en Stripe.

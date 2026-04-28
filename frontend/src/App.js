@@ -2332,8 +2332,12 @@ const AdminAccessLinks = ({ token, onAuthFail }) => {
 
   const resend = async (id) => {
     try {
-      await api.post(`/admin/access-links/${id}/resend`, {});
-      setFeedback({ type: "ok", msg: "Email reenviado correctamente." });
+      const data = await api.post(`/admin/access-links/${id}/resend`, {});
+      const ok = data?.success !== false && data?.email_status === "sent";
+      setFeedback({
+        type: ok ? "ok" : "warn",
+        msg: data?.message || (ok ? "Email reenviado correctamente." : "No se pudo enviar el email. Revisa la configuración SMTP."),
+      });
       reload();
     } catch (err) {
       const msg = err?.response?.data?.detail || "No se pudo reenviar el email.";
