@@ -231,13 +231,16 @@
         <div id="root"></div>
 
         <!-- Google Translate widget (free, multilingual) -->
-        <div id="google_translate_element" aria-hidden="true"></div>
+        <div id="google_translate_wrapper">
+            <span class="gt-icon" aria-hidden="true">🌐</span>
+            <div id="google_translate_element"></div>
+        </div>
         <script type="text/javascript">
             function googleTranslateElementInit() {
                 new google.translate.TranslateElement(
                     {
                         pageLanguage: 'es',
-                        includedLanguages: 'es,en,fr,de,it,pt,nl,sv,da,no,fi,pl,cs,ru,uk,tr,ar,zh-CN,ja,ko,hi',
+                        includedLanguages: 'es,en,fr,de,it,pt,nl,sv,da,no,fi,pl,cs,ro,ru,uk,tr,ar,zh-CN,ja,ko,hi',
                         layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
                         autoDisplay: false
                     },
