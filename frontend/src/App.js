@@ -1956,6 +1956,7 @@ const AdminPage = () => {
 const AdminLogin = ({ onLogin }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -1992,14 +1993,25 @@ const AdminLogin = ({ onLogin }) => {
         </label>
         <label>
           Contraseña
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-            data-testid="admin-login-password"
-          />
+          <div className="admin-pwd-wrap">
+            <input
+              type={showPwd ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+              data-testid="admin-login-password"
+            />
+            <button
+              type="button"
+              className="admin-pwd-toggle"
+              onClick={() => setShowPwd((v) => !v)}
+              aria-label={showPwd ? "Ocultar contraseña" : "Mostrar contraseña"}
+              data-testid="admin-login-toggle-pwd"
+            >
+              {showPwd ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
         </label>
         {error && <div className="admin-login-error" data-testid="admin-login-error">{error}</div>}
         <button type="submit" disabled={loading} data-testid="admin-login-submit">
