@@ -178,55 +178,69 @@ _DEMO_BODIES = {
 }
 
 
-# ---- Per-agent FULL content (placeholder until Obdulio sends final texts) ----
+# ---- Per-agent FULL content -------------------------------------------------
 
 _FULL_BODIES = {
     "iris": {
-        "subject": "Bienvenido. Ya no hay límite con IRIS.",
-        "header": "Sin límite. Ahora es cuando.",
+        "subject": "Ahora sí… sin límites",
+        "header": "Ahora sí… sin límites",
         "body": """
 <p class="lead">Hola {customer_name},</p>
-<p>Ya tienes <strong>acceso total a IRIS</strong>.</p>
-<p>Sin freno, sin contadores, sin "espera al siguiente mensaje".</p>
-<p>Solo tú e IRIS, las veces que quieras, el tiempo que necesites.</p>
-<p>Úsala como tu compañera real:</p>
-<p><span class="arrow">›</span>cuando quieras pensar mejor algo importante<br><span class="arrow">›</span>cuando necesites generar sin bloquearte<br><span class="arrow">›</span>cuando lo tengas todo en la cabeza y no sepas por dónde tirar</p>
-<p>IRIS está aquí para acompañarte. Lo demás, lo construyes tú.</p>
+<p>Perfecto.</p>
+<p>Ya tienes <strong>IRIS activa al completo</strong>.</p>
+<p>Ahora cambia todo.</p>
+<p>Porque ya no hay cortes,<br>no hay límites…<br>y no tienes que medir lo que haces.</p>
+<p><strong>Mi recomendación:</strong></p>
+<p><span class="arrow">›</span><strong>intégrala en tu día a día desde ya</strong>.</p>
+<p>Para crear contenido,<br>para pensar ideas,<br>para avanzar sin bloquearte.</p>
+<p>Cuanto más la uses, más natural te va a resultar.</p>
+<p>Y en poco tiempo te darás cuenta de algo:</p>
+<p><span class="arrow">›</span>lo que antes te costaba horas… <strong>ahora fluye</strong>.</p>
+<p>Eso es exactamente lo que buscabas.</p>
 {cta}
-<div class="pd"><strong>PD:</strong> Si algo te encanta, mejora tu vida o quieres más, escríbenos. Estamos al otro lado del email.</div>
-<p class="signature">Bienvenido al Universo PSICOLFIS.NET.<br><span class="name">Obdulio Bailador</span></p>
+<p class="signature">Ahora sí, úsala de verdad.<br><span class="name">Obdulio Bailador</span></p>
 """,
     },
     "alex": {
-        "subject": "Bienvenido. ALEX ya es tuyo, sin límite.",
-        "header": "Tu tiempo, recuperado.",
+        "subject": "Empieza a trabajar distinto desde hoy",
+        "header": "Empieza a trabajar distinto desde hoy",
         "body": """
 <p class="lead">Hola {customer_name},</p>
-<p>Ya tienes <strong>acceso total a ALEX</strong>.</p>
-<p>Esto cambia el juego.</p>
-<p>Ya no es probar a ver qué tal. Es <strong>delegar de verdad</strong>.</p>
-<p>Empieza a usarlo cada día:</p>
-<p><span class="arrow">›</span>para decidir más rápido<br><span class="arrow">›</span>para ordenar lo que tienes pendiente<br><span class="arrow">›</span>para quitarte ruido y avanzar con claridad</p>
-<p>El cambio no se ve en una semana. Se ve en cómo terminas la jornada.</p>
+<p>Ya tienes <strong>ALEX funcionando sin límites</strong>.</p>
+<p>Y aquí es donde empieza el cambio real.</p>
+<p>Porque ya no se trata de probar…<br><span class="arrow">›</span><strong>se trata de apoyarte en él de verdad</strong>.</p>
+<p>Empieza poco a poco:</p>
+<p>delegando tareas,<br>probando respuestas,<br>dejando que te quite carga.</p>
+<p>Y observa.</p>
+<p>Porque en cuanto lo integres en tu rutina, vas a notar algo muy claro:</p>
+<p><span class="arrow">›</span>tienes más tiempo<br><span class="arrow">›</span>más foco<br><span class="arrow">›</span>menos saturación</p>
+<p>Eso no es teoría. <strong>Es uso</strong>.</p>
 {cta}
-<div class="pd"><strong>PD:</strong> Si echas algo en falta o quieres ajustar el tono, dímelo. ALEX se afina contigo.</div>
-<p class="signature">Recupera tu tiempo.<br><span class="name">Obdulio Bailador</span></p>
+<p class="signature">Empieza hoy mismo.<br><span class="name">Obdulio Bailador</span></p>
 """,
     },
     "umbral": {
-        "subject": "Bienvenido a UMBRAL, sin límite.",
-        "header": "Sin etiquetas. Sin juicio. Sin límite.",
+        "subject": "Ahora sí… con claridad de verdad",
+        "header": "Ahora sí… con claridad de verdad",
         "body": """
 <p class="lead">Hola {customer_name},</p>
-<p>Ya tienes <strong>acceso total a UMBRAL</strong>.</p>
-<p>Aquí no hay prisa, no hay contador, no hay nadie mirando.</p>
-<p>Solo un espacio para ti, para pensar con claridad lo que antes era ruido.</p>
-<p>Úsalo:</p>
-<p><span class="arrow">›</span>cuando algo se mueve dentro y necesitas ordenarlo<br><span class="arrow">›</span>cuando una decisión te pesa más de lo que quieres reconocer<br><span class="arrow">›</span>cuando quieras hablar de lo que normalmente no se habla</p>
-<p>UMBRAL no decide por ti. <strong>Te ayuda a verlo más claro</strong>.</p>
+<p>Ya tienes <strong>UMBRAL activo sin limitaciones</strong>.</p>
+<p>Y eso cambia las reglas.</p>
+<p>Porque ahora ya no estás probando…<br><span class="arrow">›</span>ahora puedes usarlo <strong>de verdad</strong>, sin frenos y sin quedarte a medias.</p>
+<p>UMBRAL está para algo muy concreto:</p>
+<p><span class="arrow">›</span>ayudarte a ver con claridad<br><span class="arrow">›</span>ordenar lo que antes era ruido<br><span class="arrow">›</span>tomar decisiones con más sentido</p>
+<p>Y eso, cuando lo empiezas a usar en tu día a día… <strong>se nota</strong>.</p>
+<p>Más foco.<br>Más calma.<br>Menos dudas innecesarias.</p>
+<p>Además, hay algo que forma parte de su esencia:</p>
+<p>UMBRAL está diseñado desde un enfoque profundamente humano, y con una sensibilidad especial hacia personas del entorno LGTBI+, donde muchas veces encontrar claridad real no es tan sencillo fuera.</p>
+<p><strong>Sin etiquetas. Sin presión. Solo un espacio donde pensar mejor.</strong></p>
+<p>Ahora mi recomendación es simple:</p>
+<p><span class="arrow">›</span>úsalo en situaciones reales<br><span class="arrow">›</span>no lo dejes como algo puntual<br><span class="arrow">›</span>intégralo en tu forma de decidir</p>
+<p>Porque ahí es donde marca la diferencia.</p>
+<p>Y lo vas a notar.</p>
 {cta}
-<div class="pd"><strong>PD:</strong> Si algo encaja, no lo ignores. Y si algo no encaja, escríbeme. Aquí seguimos puliendo UMBRAL contigo.</div>
-<p class="signature">Bienvenido a casa.<br><span class="name">Obdulio Bailador</span></p>
+<div class="pd"><strong>PD:</strong> Si empiezas a ver cosas que antes no veías… no es casualidad. Es que estás usando bien la herramienta.</div>
+<p class="signature"><span class="name">Obdulio Bailador</span></p>
 """,
     },
 }
@@ -290,8 +304,21 @@ def render_email(
     cta_block = _cta(access_url, cta_label)
     upsell_block = _upsell(full_url, agent_name) if (level == "demo") else ""
 
+    # Fallback when Stripe doesn't send a customer name: use a warm greeting
+    # ("Hola, qué bueno que estés aquí,") instead of an awkward placeholder.
+    cust = (customer_name or "").strip()
+    if cust:
+        greeting_value = f" {cust}"
+    else:
+        greeting_value = ", qué bueno que estés aquí"
+
+    body_html = body_html.replace(
+        "<p class=\"lead\">Hola {customer_name},</p>",
+        f"<p class=\"lead\">Hola{greeting_value},</p>",
+    )
+
     body_html = body_html.format(
-        customer_name=customer_name or "amigo",
+        customer_name=cust,
         cta=cta_block,
         upsell=upsell_block,
     )
