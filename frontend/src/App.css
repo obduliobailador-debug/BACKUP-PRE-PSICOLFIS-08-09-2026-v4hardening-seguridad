@@ -4080,11 +4080,21 @@ body:has(.admin-login-page) #google_translate_wrapper { display: none !important
 .sectors-cta { text-align: center; margin-top: 36px; }
 
 /* Index page /soluciones */
-.soluciones-page { min-height: 100vh; background: #f8fafc; color: #0f172a; }
+.soluciones-page {
+  min-height: 100vh;
+  color: #0f172a;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.93) 0%, rgba(248, 250, 252, 0.97) 100%),
+    url("https://customer-assets.emergentagent.com/job_repo-modify-zone/artifacts/6sl38n35_Fondowebsectores.jpg") center top / cover no-repeat fixed;
+}
 .soluciones-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 28px; background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 18px 28px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  position: sticky; top: 0; z-index: 20;
 }
 .soluciones-brand {
   display: flex; flex-direction: column; line-height: 1.1;
@@ -4141,13 +4151,21 @@ body:has(.admin-login-page) #google_translate_wrapper { display: none !important
 .soluciones-card-cta { color: #2563eb; font-weight: 700; font-size: 14.5px; margin-top: 6px; }
 
 .soluciones-footer {
-  text-align: center; padding: 28px 24px; color: #64748b; font-size: 14px;
-  border-top: 1px solid #e2e8f0; background: #fff;
+  text-align: center; padding: 28px 24px; color: #475569; font-size: 14px;
+  border-top: 1px solid rgba(226, 232, 240, 0.6);
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 .soluciones-footer a { color: #2563eb; }
 
 /* Detail page /soluciones/:slug */
-.sector-page { background: #f8fafc; color: #0f172a; min-height: 100vh; }
+.sector-page {
+  color: #0f172a; min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.94) 0%, rgba(248, 250, 252, 0.97) 100%),
+    url("https://customer-assets.emergentagent.com/job_repo-modify-zone/artifacts/6sl38n35_Fondowebsectores.jpg") center top / cover no-repeat fixed;
+}
 .sector-main { max-width: 1100px; margin: 0 auto; padding: 50px 24px 70px; }
 .sector-hero {
   text-align: center; background: #fff; border: 1px solid #e2e8f0;
