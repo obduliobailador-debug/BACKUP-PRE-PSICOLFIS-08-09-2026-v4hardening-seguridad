@@ -106,6 +106,31 @@ visuales, badge Emergent, contenido legal.
     contextual al sector.
 - Tests: 15/15 pytest pasados + verificación E2E completa.
 
+### Sesión 15 (feb 2026) — Estética y UX de la sección de sectores
+- Fondo con imagen propia (`Fondowebsectores.jpg`): formas iridiscentes
+  + logo PSICOLFIS.NET incrustado. Overlay con tintes cálidos
+  (crema → lavanda → malva) + radial gradients animados de 18s
+  (sensación de movimiento sutil). Tarjetas con `backdrop-filter`
+  (blur + saturate) para translucidez elegante manteniendo
+  legibilidad. Aplicado en `/soluciones`, `/soluciones/:slug` y
+  la sección destacada del Home.
+- **4ª tarjeta "Estamos esperando tu sector"** en Home y
+  `/soluciones` index: borde punteado violeta, icono "+" con gradiente
+  dorado→rosa y pulse, CTA "Proponer mi sector" que lleva a
+  `/?demo=Tu sector`. Grid expandido a 4 columnas en ≥1200px.
+- **Iconos animados por sector** (cada uno con personalidad):
+  - Inmobiliarias: cyan → azul, `icon-float` (3.6s).
+  - Clínicas dentales: blanco → celeste → azul, `icon-breath` (2.8s).
+  - Salones de belleza: rosa → fucsia, `icon-sparkle` + `icon-shine`
+    radial (4.2s).
+  - Tu sector: dorado → rosa, `wish-pulse` + `wish-rotate`
+    (hue-rotate iridiscente).
+  - Hover global: rotación 6° + scale 1.12.
+  - Respeta `prefers-reduced-motion` (accesibilidad).
+- CRM inmobiliario existente (en otro proyecto Emergent) revisado y
+  **aplazado a sesión dedicada** (requiere migración de auth, DB,
+  imágenes, rutas y componentes bajo `psicolfis.net`).
+
 ## 6. Ficheros clave
 - `/app/backend/server.py` — FastAPI con todos los endpoints.
 - `/app/backend/email_templates.py` — Plantillas HTML por agente.
@@ -151,19 +176,37 @@ visuales, badge Emergent, contenido legal.
 ## 9. Pendientes / Backlog
 
 ### P0 — Próxima acción del usuario
-- [ ] **Crear los 3 agentes de Pickaxe** para los nuevos sectores
-      (Inmobiliarias / Clínicas dentales / Salones de belleza) y
-      añadir sus deployment IDs a `/app/backend/.env`:
-      - `PICKAXE_DEPLOYMENT_SECTOR_INMOBILIARIAS`
-      - `PICKAXE_DEPLOYMENT_SECTOR_DENTAL`
-      - `PICKAXE_DEPLOYMENT_SECTOR_BEAUTY`
-      Mientras estén vacíos, las páginas muestran un placeholder
-      "Demo próximamente" (totalmente válido para lanzar).
-- [ ] **Redeploy a producción** desde Emergent — todas las novedades
-      (Stripe webhook, panel admin completo, "Regalar acceso",
-      Soluciones por sector) están solo en preview hasta el deploy.
-- [ ] Tras redeploy: probar 1 compra demo real y un primer "regalo"
-      desde el panel admin.
+- [ ] **Redeploy a producción** desde Emergent para que todo lo
+      añadido en las sesiones 10-15 quede público en `psicolfis.net`
+      (Stripe webhook, panel admin + Regalar acceso, Soluciones por
+      sector con el nuevo fondo e iconos animados).
+- [ ] **Crear los 3 agentes de Pickaxe** para los sectores
+      (Inmobiliarias / Dental / Belleza) y añadir sus deployment IDs
+      a `/app/backend/.env` (`PICKAXE_DEPLOYMENT_SECTOR_INMOBILIARIAS`,
+      `_DENTAL`, `_BEAUTY`). Mientras estén vacíos, las páginas
+      muestran "Demo próximamente" (totalmente válido para lanzar).
+- [ ] Tras redeploy: probar 1 compra demo real + un primer "regalo"
+      desde el panel admin en producción.
+
+### P0 — Próxima sesión de desarrollo
+- [ ] **CMS admin para gestionar sectores desde `/admin`**
+      (opción C: demos en vivo + opción B: editor admin).
+      Migrar `SECTOR_CATALOGUE` a colección Mongo `sectors` con
+      seed. 4ª pestaña en `/admin` con:
+      - Lista (activos / ocultos / papelera).
+      - Formulario completo (slug, nombre, icono, tagline, headline,
+        description, problem, solution, ideal_for, demo_intro,
+        use_cases[], metrics[], deployment_id).
+      - Ocultar/mostrar: los ocultos devuelven 404 público y
+        desaparecen de Home.
+      - **Soft delete con botón "Restaurar" durante 30 días**.
+      - Decisiones confirmadas por usuario (2026-02-XX).
+
+### P1 — CRM Inmobiliario (otro proyecto Emergent)
+- [ ] Migrar el CRM inmobiliario existente
+      (https://git-import-helper.emergent.host/) bajo `psicolfis.net`
+      en una **sesión dedicada** — requiere mover auth, DB, imágenes,
+      rutas y componentes.
 
 ### P1 — Mejoras técnicas
 - [ ] Refactor: dividir `/app/backend/server.py` (~1700 líneas) en
