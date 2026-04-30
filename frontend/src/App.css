@@ -4054,9 +4054,16 @@ body:has(.admin-login-page) #google_translate_wrapper { display: none !important
   gap: 22px; max-width: 1100px; margin: 0 auto;
 }
 @media (max-width: 880px) { .sectors-grid { grid-template-columns: 1fr; } }
+@media (min-width: 1200px) {
+  .sectors-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 1360px; }
+}
 .sector-card {
+  position: relative;
   display: flex; flex-direction: column; gap: 10px;
-  background: #fff; border: 1px solid #e2e8f0; border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid #e2e8f0; border-radius: 18px;
   padding: 28px 24px; text-decoration: none; color: inherit;
   transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
   box-shadow: 0 1px 2px rgba(0,0,0,0.02);
@@ -4071,12 +4078,31 @@ body:has(.admin-login-page) #google_translate_wrapper { display: none !important
   background: linear-gradient(135deg, #3b82f6, #8b5cf6);
   color: #fff; display: flex; align-items: center; justify-content: center;
   margin-bottom: 6px;
+  transition: transform 220ms ease;
 }
+.sector-card:hover .sector-icon { transform: rotate(-6deg) scale(1.08); }
 .sector-card h3 { margin: 4px 0 0; font-size: 22px; color: #0f172a; letter-spacing: -0.01em; }
 .sector-card p { margin: 0; color: #475569; font-size: 14.5px; line-height: 1.55; }
 .sector-card .sector-link {
   margin-top: auto; color: #2563eb; font-weight: 700; font-size: 14px;
 }
+
+/* Home "wish" card variant */
+.sector-card-wish {
+  background: rgba(255, 255, 255, 0.55);
+  border: 2px dashed rgba(139, 92, 246, 0.45);
+  text-align: center; align-items: center;
+}
+.sector-card-wish:hover {
+  border-color: rgba(139, 92, 246, 0.9);
+  background: rgba(255, 255, 255, 0.8);
+}
+.sector-card-wish .sector-icon {
+  background: linear-gradient(135deg, #f59e0b, #ec4899);
+  box-shadow: 0 8px 20px rgba(236, 72, 153, 0.3);
+  animation: wish-pulse 2.6s ease-in-out infinite;
+}
+.sector-card-wish .sector-link { color: #be185d; }
 .sectors-cta { text-align: center; margin-top: 36px; }
 
 /* Index page /soluciones */
@@ -4084,16 +4110,31 @@ body:has(.admin-login-page) #google_translate_wrapper { display: none !important
   min-height: 100vh;
   color: #0f172a;
   background:
-    linear-gradient(180deg, rgba(248, 250, 252, 0.93) 0%, rgba(248, 250, 252, 0.97) 100%),
+    linear-gradient(135deg, rgba(255, 247, 237, 0.62) 0%, rgba(238, 242, 255, 0.72) 45%, rgba(250, 245, 255, 0.68) 100%),
     url("https://customer-assets.emergentagent.com/job_repo-modify-zone/artifacts/6sl38n35_Fondowebsectores.jpg") center top / cover no-repeat fixed;
+}
+.soluciones-page::before {
+  content: "";
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(59,130,246,0.08) 0%, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(139,92,246,0.08) 0%, transparent 45%);
+  pointer-events: none;
+  z-index: 0;
+  animation: soluciones-glow 18s ease-in-out infinite alternate;
+}
+.soluciones-page > * { position: relative; z-index: 1; }
+@keyframes soluciones-glow {
+  0%   { transform: translate3d(0, 0, 0) scale(1); opacity: 0.85; }
+  100% { transform: translate3d(20px, -10px, 0) scale(1.05); opacity: 1; }
 }
 .soluciones-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 18px 28px;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.55);
   position: sticky; top: 0; z-index: 20;
 }
 .soluciones-brand {
@@ -4124,21 +4165,54 @@ body:has(.admin-login-page) #google_translate_wrapper { display: none !important
   gap: 22px;
 }
 @media (max-width: 980px) { .soluciones-grid { grid-template-columns: 1fr; } }
+@media (min-width: 1100px) { .soluciones-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .soluciones-card {
+  position: relative;
   display: flex; flex-direction: column; gap: 12px;
-  background: #fff; border: 1px solid #e2e8f0; border-radius: 20px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 20px;
   padding: 32px 28px; text-decoration: none; color: inherit;
-  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+  transition: transform 260ms ease, box-shadow 260ms ease, border-color 260ms ease;
+  overflow: hidden;
+  animation: card-fadeup 600ms ease-out backwards;
+}
+.soluciones-card::after {
+  content: "";
+  position: absolute; inset: -1px;
+  border-radius: 20px; pointer-events: none;
+  background: linear-gradient(135deg, rgba(59,130,246,0) 0%, rgba(139,92,246,0) 100%);
+  opacity: 0;
+  transition: opacity 260ms ease;
 }
 .soluciones-card:hover {
-  transform: translateY(-6px); border-color: #c4b5fd;
-  box-shadow: 0 22px 50px rgba(139,92,246,0.16);
+  transform: translateY(-8px);
+  border-color: rgba(196,181,253,0.85);
+  box-shadow: 0 26px 60px rgba(139,92,246,0.22);
+}
+.soluciones-card:hover::after {
+  opacity: 1;
+  background: linear-gradient(135deg, rgba(59,130,246,0.12) 0%, rgba(236,72,153,0.10) 100%);
+}
+.soluciones-card > * { position: relative; z-index: 1; }
+.soluciones-card:nth-child(1) { animation-delay: 40ms; }
+.soluciones-card:nth-child(2) { animation-delay: 120ms; }
+.soluciones-card:nth-child(3) { animation-delay: 200ms; }
+.soluciones-card:nth-child(4) { animation-delay: 280ms; }
+@keyframes card-fadeup {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .soluciones-card-icon {
   width: 64px; height: 64px; border-radius: 16px;
   background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: #fff;
   display: flex; align-items: center; justify-content: center; margin-bottom: 6px;
+  box-shadow: 0 8px 20px rgba(59,130,246,0.25);
+  transition: transform 260ms ease;
 }
+.soluciones-card:hover .soluciones-card-icon { transform: rotate(-6deg) scale(1.06); }
 .soluciones-card h2 { margin: 4px 0 0; font-size: 24px; letter-spacing: -0.01em; }
 .soluciones-card > p { color: #475569; font-size: 15px; line-height: 1.55; margin: 0; }
 .soluciones-card ul {
@@ -4149,6 +4223,29 @@ body:has(.admin-login-page) #google_translate_wrapper { display: none !important
 .soluciones-card li { color: #475569; font-size: 13.5px; }
 .soluciones-card li strong { color: #0f172a; font-weight: 800; }
 .soluciones-card-cta { color: #2563eb; font-weight: 700; font-size: 14.5px; margin-top: 6px; }
+
+/* Special "Your sector" placeholder card (dashed, inviting) */
+.soluciones-card-wish {
+  background: rgba(255, 255, 255, 0.55);
+  border: 2px dashed rgba(139, 92, 246, 0.45);
+  text-align: center;
+  align-items: center; justify-content: center;
+}
+.soluciones-card-wish:hover {
+  border-color: rgba(139, 92, 246, 0.9);
+  background: rgba(255, 255, 255, 0.75);
+}
+.soluciones-card-wish .soluciones-card-icon {
+  background: linear-gradient(135deg, #f59e0b, #ec4899);
+  box-shadow: 0 8px 20px rgba(236, 72, 153, 0.3);
+  animation: wish-pulse 2.6s ease-in-out infinite;
+}
+.soluciones-card-wish h2 { font-size: 22px; }
+.soluciones-card-wish > p { color: #475569; font-size: 14.5px; }
+@keyframes wish-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 8px 20px rgba(236, 72, 153, 0.3); }
+  50%      { transform: scale(1.08); box-shadow: 0 14px 30px rgba(236, 72, 153, 0.5); }
+}
 
 .soluciones-footer {
   text-align: center; padding: 28px 24px; color: #475569; font-size: 14px;
@@ -4163,9 +4260,19 @@ body:has(.admin-login-page) #google_translate_wrapper { display: none !important
 .sector-page {
   color: #0f172a; min-height: 100vh;
   background:
-    linear-gradient(180deg, rgba(248, 250, 252, 0.94) 0%, rgba(248, 250, 252, 0.97) 100%),
+    linear-gradient(135deg, rgba(255, 247, 237, 0.66) 0%, rgba(238, 242, 255, 0.76) 45%, rgba(250, 245, 255, 0.72) 100%),
     url("https://customer-assets.emergentagent.com/job_repo-modify-zone/artifacts/6sl38n35_Fondowebsectores.jpg") center top / cover no-repeat fixed;
 }
+.sector-page::before {
+  content: "";
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 15% 25%, rgba(59,130,246,0.08) 0%, transparent 42%),
+    radial-gradient(circle at 85% 75%, rgba(139,92,246,0.08) 0%, transparent 45%);
+  pointer-events: none; z-index: 0;
+  animation: soluciones-glow 18s ease-in-out infinite alternate;
+}
+.sector-page > * { position: relative; z-index: 1; }
 .sector-main { max-width: 1100px; margin: 0 auto; padding: 50px 24px 70px; }
 .sector-hero {
   text-align: center; background: #fff; border: 1px solid #e2e8f0;

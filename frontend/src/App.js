@@ -870,6 +870,15 @@ const Home = () => {
                 <p>Reservas 24/7 por WhatsApp, upsell automático y clientas que vuelven solas.</p>
                 <span className="sector-link">Ver solución →</span>
               </a>
+
+              <a className="sector-card sector-card-wish reveal reveal-up" href="/?demo=Tu%20sector" data-testid="home-sector-wish">
+                <div className="sector-icon" aria-hidden="true">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+                </div>
+                <h3>Tu sector aquí</h3>
+                <p>¿No ves el tuyo? Dinos a qué te dedicas y diseñamos un agente IA a medida.</p>
+                <span className="sector-link">Proponer mi sector →</span>
+              </a>
             </div>
 
             <div className="sectors-cta reveal">
@@ -2719,6 +2728,18 @@ const SolucionesIndexPage = () => {
                 <span className="soluciones-card-cta">Ver solución →</span>
               </a>
             ))}
+            <a
+              href="/?demo=Tu%20sector"
+              className="soluciones-card soluciones-card-wish"
+              data-testid="soluciones-card-wish"
+            >
+              <div className="soluciones-card-icon" aria-hidden="true">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              </div>
+              <h2>Estamos esperando tu sector</h2>
+              <p>Dinos qué hace tu negocio y creamos un agente IA a medida para ti. Sin plantillas, sin esperas.</p>
+              <span className="soluciones-card-cta">Proponer mi sector →</span>
+            </a>
           </div>
         )}
       </main>
