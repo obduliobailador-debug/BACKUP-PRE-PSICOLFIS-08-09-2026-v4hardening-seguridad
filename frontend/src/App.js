@@ -575,7 +575,7 @@ const Home = () => {
                 className="hero-logo"
                 width="360"
                 height="150"
-                fetchpriority="high"
+                fetchPriority="high"
               />
             </div>
             

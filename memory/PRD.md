@@ -69,40 +69,42 @@ visuales, badge Emergent, contenido legal.
 ### Sesión 10-11 (feb 2026) — Universo Psicolfis.net
 - Webhook Stripe firmado con `STRIPE_WEBHOOK_SECRET`, lectura de
   `metadata.agent_id` y `metadata.level` desde Payment Links.
-- Generación de JWT firmado con expiración configurable
-  (`ACCESS_TOKEN_DAYS=365` por defecto).
-- Ruta SPA `/mi-agente/:token` que valida en `/api/access/validate`
-  y embebe el iframe de Pickaxe.
-- Plantillas de email dinámicas (texto+HTML) con foto del agente.
-- Widget de Google Translate (22 idiomas).
-- Limpieza de despliegues antiguos en Emergent (ahorro ~300 cr/mes).
+- Generación de JWT firmado con expiración configurable.
+- Ruta SPA `/mi-agente/:token` con iframe Pickaxe protegido.
+- Plantillas de email dinámicas + Widget Google Translate (22 idiomas).
 
 ### Sesión 12 (feb 2026) — Panel Admin Fase 1
-- Backend: `bcrypt` + `PyJWT` + `admin_users` + `login_attempts`,
-  rate-limit 5/15min, endpoints `/api/admin/login`, `/me`,
-  `/budget-requests`, `/reviews`.
-- Frontend: `/admin` con login (toggle mostrar contraseña), 2 tabs.
+- Backend: bcrypt + PyJWT + admin_users + login_attempts (rate-limit).
+- Frontend: `/admin` con login y 2 tabs (Presupuestos + Reseñas).
 
-### Sesión 13 (feb 2026) — Regalar acceso (ESTE FORK)
-- Modelo `AdminAccessLinkRequest`, helper
-  `_create_and_persist_access_link`.
-- Endpoints (admin auth):
-  - `POST /api/admin/access-links` (crea + opcionalmente envía
-    email + persiste).
-  - `GET /api/admin/access-links` (últimos 50).
-  - `POST /api/admin/access-links/{id}/resend` (devuelve 200 con
-    `email_status: sent|failed`, no 500).
-  - `POST /api/admin/access-links/{id}/revoke` (añade jti a
-    `revoked_tokens`).
-  - `DELETE /api/admin/access-links/{id}` (solo borra del historial).
-- `decode_access_token` ahora consulta `revoked_tokens` antes de
-  permitir el acceso.
-- Frontend: 3ª pestaña **"Regalar acceso"** con formulario,
-  feedback OK/Warn/Error, tarjeta del último enlace generado con
-  botón "Copiar", e historial con acciones (Copiar / Reenviar /
-  Revocar / Eliminar).
-- Tests pytest en `/app/tests/test_admin_access_links.py` (22/26
-  pass; los 3 falsos negativos son timeouts del gateway preview).
+### Sesión 13 (feb 2026) — Regalar acceso
+- 5 endpoints `/api/admin/access-links*` con denylist `revoked_tokens`.
+- Frontend: 3ª pestaña "Regalar acceso" con formulario, historial,
+  acciones (Copiar / Reenviar / Revocar / Eliminar).
+
+### Sesión 14 (feb 2026) — Soluciones por sector (B2B verticales)
+- Backend: `SECTOR_CATALOGUE` con 3 verticales (inmobiliarias,
+  clinicas-dentales, salones-belleza). Endpoints públicos:
+  - `GET /api/sectors` — listado (sin deployment_id).
+  - `GET /api/sectors/{slug}` — detalle (con deployment_id si existe).
+- Variables `.env`: `PICKAXE_DEPLOYMENT_SECTOR_INMOBILIARIAS`,
+  `_DENTAL`, `_BEAUTY` (vacías hasta que se creen los agentes en
+  Pickaxe; mientras, la página muestra placeholder "Demo próximamente").
+- Frontend:
+  - Nuevo enlace **"Soluciones"** en navbar Home.
+  - Sección destacada en Home (`#soluciones`) con 3 tarjetas y CTA
+    "Ver todas las soluciones por sector".
+  - `/soluciones` — index público con grid de los 3 sectores.
+  - `/soluciones/:slug` — landing detallada por sector con:
+    hero + métricas + problema/solución + casos de uso + demo en
+    vivo Pickaxe (o placeholder) + CTAs duales (Solicitar demo +
+    WhatsApp directo) + final CTA.
+  - El CTA "Solicitar demo" navega a `/?demo=<Sector>` y el Home
+    abre automáticamente el modal de presupuesto con el plan
+    `Demo personalizada · <Sector>` autorrellenado.
+  - El CTA WhatsApp abre `/api/whatsapp?text=` con un mensaje
+    contextual al sector.
+- Tests: 15/15 pytest pasados + verificación E2E completa.
 
 ## 6. Ficheros clave
 - `/app/backend/server.py` — FastAPI con todos los endpoints.
@@ -149,28 +151,37 @@ visuales, badge Emergent, contenido legal.
 ## 9. Pendientes / Backlog
 
 ### P0 — Próxima acción del usuario
-- [ ] **Redeploy a producción** desde Emergent (las funciones de
-      Stripe webhook, email, panel admin y "Regalar acceso" solo
-      están activas en el preview hasta el redeploy).
-- [ ] Tras redeploy: probar 1 compra demo real (50€) y validar que
-      llega el email y abre el iframe en `psicolfis.net/mi-agente/:token`.
+- [ ] **Crear los 3 agentes de Pickaxe** para los nuevos sectores
+      (Inmobiliarias / Clínicas dentales / Salones de belleza) y
+      añadir sus deployment IDs a `/app/backend/.env`:
+      - `PICKAXE_DEPLOYMENT_SECTOR_INMOBILIARIAS`
+      - `PICKAXE_DEPLOYMENT_SECTOR_DENTAL`
+      - `PICKAXE_DEPLOYMENT_SECTOR_BEAUTY`
+      Mientras estén vacíos, las páginas muestran un placeholder
+      "Demo próximamente" (totalmente válido para lanzar).
+- [ ] **Redeploy a producción** desde Emergent — todas las novedades
+      (Stripe webhook, panel admin completo, "Regalar acceso",
+      Soluciones por sector) están solo en preview hasta el deploy.
+- [ ] Tras redeploy: probar 1 compra demo real y un primer "regalo"
+      desde el panel admin.
 
 ### P1 — Mejoras técnicas
-- [ ] Refactor: dividir `/app/backend/server.py` (1554 líneas) en
-      routers (`admin/`, `access/`, `payments/`, `reviews/`).
-- [ ] Refactor: dividir `/app/frontend/src/App.js` (~2400 líneas) en
-      vistas/componentes individuales.
+- [ ] Refactor: dividir `/app/backend/server.py` (~1700 líneas) en
+      routers (`admin/`, `access/`, `payments/`, `sectors/`).
+- [ ] Refactor: dividir `/app/frontend/src/App.js` (~3000 líneas) en
+      `pages/` y `components/`.
 - [ ] Compresión de vídeos `*_sonriendo.mp4` y `preload="metadata"`.
 - [ ] Imágenes en `.webp` / `.avif` para LCP (Core Web Vitals).
-- [ ] Investigar timeouts del gateway preview en POST de admin
-      (no afectan a producción, pero molestan en tests).
+- [ ] Convertir CTAs WhatsApp en `<a href target=_blank>` (mejora
+      accesibilidad y middle-click).
 
 ### P2 — Extras
 - [ ] Botón flotante WhatsApp en todas las páginas.
 - [ ] Google Analytics 4.
-- [ ] Blog / contenido SEO.
-- [ ] Versión en inglés (i18n) si se internacionaliza.
-- [ ] Endpoint preview-email en el admin UI (ya existe en backend).
+- [ ] Blog / contenido SEO por sector.
+- [ ] Versión en inglés (i18n).
+- [ ] Más sectores: gimnasios, fisios, restaurantes, asesorías.
+- [ ] Editor del catálogo de sectores desde el panel admin (Mongo).
 
 ## 10. Enhancement sugerido
 En el panel admin, añadir un pequeño contador "Conversiones del mes"
