@@ -4497,6 +4497,83 @@ body:has(.admin-login-page) #google_translate_wrapper { display: none !important
 .sector-final-cta .hero-btn.secondary { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.3); }
 .sector-final-cta .hero-btn.secondary:hover { background: rgba(255,255,255,0.18); }
 
+/* ===== Bundled product (CRM incluido) ===== */
+.sector-bundled {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 24px;
+  padding: 42px 36px; margin: 30px 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+.sector-bundled-head { text-align: center; max-width: 760px; margin: 0 auto 28px; }
+.sector-bundled-head h2 {
+  font-size: clamp(24px, 3vw, 32px); margin: 12px 0 10px; letter-spacing: -0.01em;
+}
+.sector-bundled-head p { color: #475569; margin: 0; font-size: 16px; line-height: 1.55; }
+
+.sector-bundled-grid {
+  display: grid; grid-template-columns: 1.25fr 1fr;
+  gap: 30px; align-items: center;
+}
+@media (max-width: 920px) { .sector-bundled-grid { grid-template-columns: 1fr; } }
+
+/* Stacked screenshots with hover expansion */
+.sector-bundled-gallery {
+  display: flex; flex-direction: column; gap: 12px;
+  position: relative;
+}
+.sector-bundled-shot {
+  position: relative; overflow: hidden; border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+  transition: transform 260ms ease, box-shadow 260ms ease;
+  background: #0f172a;
+  aspect-ratio: 16 / 9;
+}
+.sector-bundled-shot:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.22);
+}
+.sector-bundled-shot img {
+  width: 100%; height: 100%; display: block; object-fit: cover; object-position: top left;
+}
+.sector-bundled-shot-fallback {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #cbd5e1; font-weight: 700; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase;
+}
+
+.sector-bundled-body ul {
+  list-style: none; padding: 0; margin: 0 0 22px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.sector-bundled-body li {
+  display: flex; gap: 10px; color: #334155; font-size: 15px; line-height: 1.55;
+}
+.sector-bundled-body .sector-check {
+  flex: 0 0 22px; width: 22px; height: 22px;
+}
+
+.sector-bundled-actions {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  margin-top: 6px;
+}
+.sector-bundled-note {
+  font-size: 13px; color: #64748b;
+}
+.sector-bundled-disclaimer {
+  margin: 18px 0 0; padding: 10px 14px;
+  background: #fef3c7; color: #854d0e; font-size: 12.5px;
+  border-radius: 8px; border: 1px solid #fde68a;
+  line-height: 1.45;
+}
+
+.sector-bundled-offline {
+  background: #fff7ed; border: 1px solid #fed7aa; border-radius: 14px;
+  padding: 18px 20px; margin-bottom: 14px;
+}
+.sector-bundled-offline strong { color: #9a3412; display: block; margin-bottom: 6px; }
+.sector-bundled-offline p { margin: 0 0 12px; color: #7c2d12; font-size: 14px; line-height: 1.55; }
+
 /* Override the global hero-btn variants for the sector hero (light bg) */
 .sector-hero .hero-btn.secondary,
 .sectors-cta .hero-btn.secondary {

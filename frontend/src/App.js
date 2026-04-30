@@ -2755,6 +2755,141 @@ const SolucionesIndexPage = () => {
 };
 
 
+const SECTOR_BUNDLED_PRODUCTS = {
+  inmobiliarias: {
+    name: "CRM Inmobiliario Premium",
+    tagline: "El software de gestión que nuestros clientes inmobiliarios reciben incluido con su agente IA.",
+    url: process.env.REACT_APP_CRM_DEMO_URL_INMOBILIARIAS || "",
+    features: [
+      "Panel ejecutivo con cartera activa, clientes, valor y comisiones estimadas.",
+      "Gestión completa de inmuebles con estados: En venta · Reservado · Alquiler.",
+      "Base de clientes segmentada (compradores, vendedores, inquilinos).",
+      "Tips diarios, informes, agentes comerciales y cierre de visitas.",
+    ],
+    screenshots: [
+      { src: "/images/crm/dashboard.jpg",   alt: "Panel principal del CRM inmobiliario con métricas de cartera, clientes y comisiones" },
+      { src: "/images/crm/properties.jpg",  alt: "Listado de inmuebles del CRM con fotos, precios y estados" },
+      { src: "/images/crm/clients.jpg",     alt: "Clientes recientes del CRM segmentados por tipo" },
+    ],
+    disclaimer: "Demo pública con datos ficticios · El entorno es de prueba y puede estar temporalmente offline.",
+  },
+};
+
+const SectorBundledProduct = ({ slug, sectorName }) => {
+  const product = SECTOR_BUNDLED_PRODUCTS[slug];
+  const [imgFailed, setImgFailed] = useState({});
+  const [probe, setProbe] = useState({ checked: false, online: true });
+
+  // Lightweight availability check: open a HEAD request via an image beacon.
+  // We use the favicon so we don't depend on the CRM allowing CORS.
+  useEffect(() => {
+    if (!product?.url) return;
+    let done = false;
+    const img = new window.Image();
+    const timer = setTimeout(() => {
+      if (!done) { done = true; setProbe({ checked: true, online: false }); }
+    }, 6000);
+    try {
+      const u = new URL(product.url);
+      img.onload = () => { if (!done) { done = true; clearTimeout(timer); setProbe({ checked: true, online: true }); } };
+      img.onerror = () => { if (!done) { done = true; clearTimeout(timer); setProbe({ checked: true, online: false }); } };
+      img.src = `${u.origin}/favicon.ico?t=${Date.now()}`;
+    } catch (e) {
+      setProbe({ checked: true, online: false });
+    }
+    return () => { clearTimeout(timer); done = true; };
+  }, [product?.url]);
+
+  if (!product || !product.url) return null;
+
+  const handleOpen = () => {
+    window.open(product.url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleNotify = () => {
+    const subject = encodeURIComponent(`CRM ${sectorName || ""} ha sido reportado como offline`);
+    const body = encodeURIComponent(
+      `Hola Obdulio,\n\nUn visitante ha intentado acceder al CRM de demo y no ha respondido.\n\nURL: ${product.url}\nFecha: ${new Date().toLocaleString("es-ES")}`
+    );
+    window.location.href = `mailto:obdulio@psicolfis.net?subject=${subject}&body=${body}`;
+  };
+
+  return (
+    <section className="sector-bundled reveal" data-testid={`sector-bundled-${slug}`}>
+      <div className="sector-bundled-head">
+        <span className="sectors-eyebrow">Producto incluido</span>
+        <h2>{product.name}</h2>
+        <p>{product.tagline}</p>
+      </div>
+
+      <div className="sector-bundled-grid">
+        <div className="sector-bundled-gallery">
+          {product.screenshots.map((sh, idx) => (
+            <div key={sh.src} className="sector-bundled-shot" data-testid={`crm-shot-${idx}`}>
+              {imgFailed[idx] ? (
+                <div className="sector-bundled-shot-fallback">
+                  <span>{idx === 0 ? "Panel principal" : idx === 1 ? "Inmuebles" : "Clientes"}</span>
+                </div>
+              ) : (
+                <img
+                  src={sh.src}
+                  alt={sh.alt}
+                  loading="lazy"
+                  onError={() => setImgFailed((s) => ({ ...s, [idx]: true }))}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="sector-bundled-body">
+          <ul>
+            {product.features.map((f, i) => (
+              <li key={i}>
+                <span className="sector-check" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </span>
+                {f}
+              </li>
+            ))}
+          </ul>
+
+          {probe.checked && !probe.online ? (
+            <div className="sector-bundled-offline" data-testid="crm-offline">
+              <strong>La demo en vivo no responde ahora mismo.</strong>
+              <p>Estamos en un entorno de prueba y a veces se pone a dormir. Puedes intentar abrirlo igualmente — si sigue caído, escríbenos y te enviamos una demo guiada en 5 minutos.</p>
+              <div className="sector-bundled-actions">
+                <button className="hero-btn primary" onClick={handleOpen} data-testid="crm-try-anyway">
+                  Intentar abrir igualmente →
+                </button>
+                <button className="hero-btn secondary" onClick={handleNotify} data-testid="crm-notify">
+                  Avisarnos del fallo
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="sector-bundled-actions">
+              <button
+                className="hero-btn primary"
+                onClick={handleOpen}
+                data-testid="crm-open-live"
+              >
+                Probar el CRM en vivo →
+              </button>
+              <span className="sector-bundled-note">
+                Se abre en pestaña nueva · No pierdes esta página
+              </span>
+            </div>
+          )}
+
+          <p className="sector-bundled-disclaimer">{product.disclaimer}</p>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+
 const SectorPage = () => {
   const { slug } = useParams();
   useScrollReveal();
@@ -2901,6 +3036,9 @@ const SectorPage = () => {
             ))}
           </ul>
         </section>
+
+        {/* Bundled product (e.g. CRM for inmobiliarias) */}
+        <SectorBundledProduct slug={s.slug} sectorName={s.name} />
 
         {/* Live demo */}
         <section className="sector-demo reveal" data-testid="sector-demo-section">
