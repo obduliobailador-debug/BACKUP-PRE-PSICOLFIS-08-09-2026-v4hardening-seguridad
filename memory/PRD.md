@@ -131,6 +131,28 @@ visuales, badge Emergent, contenido legal.
   **aplazado a sesión dedicada** (requiere migración de auth, DB,
   imágenes, rutas y componentes bajo `psicolfis.net`).
 
+### Sesión 16 (feb 2026) — CRM incluido + protecciones
+- Sección "Producto Incluido" añadida en `/soluciones/inmobiliarias`
+  con 3 screenshots reales del CRM (capturados con Playwright,
+  servidos localmente desde `/app/frontend/public/images/crm/`),
+  4 features con checks, botón "Probar el CRM en vivo →" que abre
+  en pestaña nueva con `rel="noopener noreferrer"`.
+- **Protecciones**:
+  - Chequeo automático de disponibilidad (favicon beacon, timeout 6s).
+  - Si CRM offline → mensaje naranja amigable + 2 botones
+    ("Intentar igualmente" + "Avisarnos del fallo" via mailto).
+  - Fallback de imagen individual (placeholder oscuro con label).
+  - URL configurable en `.env`
+    (`REACT_APP_CRM_DEMO_URL_INMOBILIARIAS`).
+- Componente `SectorBundledProduct` reutilizable: en el futuro se
+  pueden añadir productos incluidos para otros sectores con solo
+  extender `SECTOR_BUNDLED_PRODUCTS` en App.js.
+- Decisión sobre `crm.psicolfis.net`: aplazada (Opción B). El CRM
+  sigue accesible vía URL preview de Emergent. Cuando se despliegue
+  en producción o se fusione bajo psicolfis.net, basta cambiar la
+  variable `.env` y redeploy. Guía DNS guardada en
+  `/app/memory/crm-subdomain-setup.md`.
+
 ## 6. Ficheros clave
 - `/app/backend/server.py` — FastAPI con todos los endpoints.
 - `/app/backend/email_templates.py` — Plantillas HTML por agente.
