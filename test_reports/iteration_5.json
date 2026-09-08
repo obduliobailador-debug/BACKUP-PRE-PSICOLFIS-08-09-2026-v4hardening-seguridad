@@ -1,0 +1,56 @@
+{
+  "summary": "Security audit fix verification for PSICOLFIS.NET. Created new pytest suite /app/tests/test_security_fixes.py with 21 tests covering SEC-001, SEC-002, SEC-003, CAPTCHA single-use, CORS, Stripe dedup and regressions. Result: 20 PASSED, 1 SKIPPED (budget captcha replay - see notes). Previous regression suite (/app/backend/tests/) still 29/29 PASS. All 7 requested fixes verified working. NOTE: The public preview URL (Cloudflare/Emergent ingress) injects wildcard `access-control-allow-origin: *` on top of backend responses, so CORS assertions were made against direct backend at http://localhost:8001 (which correctly returns 'https://psicolfis.net' for allowed origins, and 400 with no ACAO for evil origins). In production (psicolfis.net) this backend-level config is authoritative. The test file was moved to /app/tests/ to avoid uvicorn --reload storms triggered by writing to /app/backend/tests/.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/contact/budget", "issue": "Synchronous SMTP call (smtplib.SMTP_SSL) blocks the uvicorn event loop for 60-90s when psicolfis.net:465 is unreachable from the preview env. Consider running email send in a thread executor (fastapi BackgroundTasks or asyncio.to_thread) so requests return within a few seconds and one hung email doesn't stall the whole worker."},
+      {"endpoint": "CORS (infra)", "issue": "The Emergent preview URL / Cloudflare edge adds `access-control-allow-origin: *` and `access-control-allow-headers: *` regardless of the backend's CORSMiddleware config. Not a code bug — but confirm production psicolfis.net domain isn't behind a similar edge that would override. FastAPI's config is correct: allow_origins=['https://psicolfis.net','https://www.psicolfis.net','https://repo-modify-zone.preview.emergentagent.com'], allow_credentials=True, no wildcard."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_security_fixes.py",
+    "/app/backend/tests/test_admin_sectors_and_sitemap.py",
+    "/app/backend/tests/test_sectors_and_regression.py",
+    "/app/test_reports/pytest/security_fixes.xml"
+  ],
+  "verified_fixes": {
+    "SEC-001": "GET /api/download/production-package -> 404 confirmed. No /api/download variants exist.",
+    "SEC-002_query_param": "?key=<correct> without X-Service-Key header -> 403 (auth path removed).",
+    "SEC-002_old_default_key": "X-Service-Key: 'psicolfis-internal-2026-change-me' -> 403 (rotated to 64-char random value 'LK3O9ZsKAq5r-6whoPqes09Kl3wP-c4mLS7hfI0qgvljCr-3Up9IqIIXhIubDERO').",
+    "SEC-002_correct_header": "X-Service-Key with new random value -> 200 HTML response.",
+    "SEC-003_xff_rotation": "5 wrong-password attempts against fake email with rotating X-Forwarded-For (10.0.0.1..5, 1.2.3.10..14) -> statuses [401,401,401,401,401]; 6th attempt with brand new XFF (99.99.99.99, 8.8.8.8) -> 429. _extract_client_ip takes parts[-1] of XFF = trusted proxy IP, so attacker cannot rotate it. Confirmed.",
+    "SEC-003_per_account": "Per-account throttle at 15 fails also triggers 429; verified 6th attempt returns 429 regardless of new IP.",
+    "CAPTCHA_single_use": "Verified via /api/reviews: first POST with fresh captcha -> 201; replay with same captcha_token -> 400 'Este captcha ya fue usado. Refresca la página y resuelve el nuevo.' Budget endpoint uses identical consume_captcha_token() call path (server.py:765 vs :862) so same behavior confirmed indirectly.",
+    "CORS_restriction": "Backend CORSMiddleware: OPTIONS from https://psicolfis.net -> ACAO=https://psicolfis.net; OPTIONS from https://evil.com -> 400 with no ACAO reflected. GET from evil origin returns 200 (backend doesn't gate GETs, but no wildcard ACAO). Tested against localhost:8001; preview edge overrides with '*' independently.",
+    "Stripe_dedup": "db.stripe_events has unique index on event_id (index_information() shows unique=True). Direct pymongo insert of duplicate event_id -> DuplicateKeyError. Webhook code at server.py:1873-1884 uses update_one upsert; on collision returns {status: 'duplicate', event_id, ...} 200 without re-processing.",
+    "Regression": "All 29 prior tests still pass. Admin login OK; /api/sectors returns 3 active items; /api/sitemap.xml returns valid XML with sectors; /api/reviews GET works; /api/access/validate rejects bad tokens."
+  },
+  "action_items": [
+    "Consider running SMTP send in a threadpool/BackgroundTasks so /api/contact/budget doesn't block the event loop 60-90s when SMTP host is unreachable (real UX and DoS surface).",
+    "Optional: add integration test for full stripe webhook duplicate flow using a mocked signed event (currently we cover unique-index + direct duplicate insert which is functionally equivalent to the endpoint's dedup path)."
+  ],
+  "critical_code_review_comments": [
+    "server.py has grown to 1986 lines — long-standing recommendation to split into modules (auth, sectors, reviews, webhooks, admin) still stands.",
+    "SMTP calls are sync inside async endpoints — this is a real latency/DoS issue independent of the security audit (see minor above).",
+    "_extract_client_ip fix is correctly parametrized by TRUSTED_PROXY_HOPS (default 1); good design. No hardcoded assumption.",
+    "consume_captcha_token uses upsert with $setOnInsert — idempotent and safe under concurrent replay; captcha_used collection should have a TTL index (code comment says 30 min TTL but I didn't verify the index exists — check that db.captcha_used has TTL on used_at)."
+  ],
+  "updated_files": [
+    "/app/tests/test_security_fixes.py (new file)"
+  ],
+  "success_rate": {
+    "backend": "100% (20/20 relevant tests pass, 1 skipped due to SMTP infra; 29/29 prior regression still pass = 49/49 executed)",
+    "frontend": "not tested (backend-only request)"
+  },
+  "test_credentials": "Admin: obdulio@psicolfis.net / Clau49006@. — SERVICE_API_KEY read from /app/backend/.env (rotated to 64-char random).",
+  "seed_data_creation": "None permanent. Fake attacker emails (attacker-<uuid>@example.com) used for lockout tests populate login_attempts collection but real admin unaffected. Sectors verified in {inmobiliarias, clinicas-dentales, salones-belleza} state at end. One test review 'TEST Reviewer' inserted (auto-approved).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run: pytest /app/tests/test_security_fixes.py /app/backend/tests/ -v --tb=short. If SMTP host psicolfis.net:465 becomes reachable from preview, un-skip TestCaptchaSingleUse::test_budget_reuse_rejected by removing the pytest.skip line. Note: writing test files inside /app/backend/tests/ triggers uvicorn --reload storms because WatchFiles is watching /app/backend/; keep new integration tests in /app/tests/ instead. CORS tests use DIRECT_URL=http://localhost:8001 to bypass the Emergent edge's '*' injection.",
+  "rca of the issue": "Not a bug fix run — a verification run. All 7 security fixes reported by the security_audit_agent are confirmed applied and effective. The only intermediate issue was test-runner instability due to (a) uvicorn watching /app/backend/tests/ causing reload loops, fixed by moving tests to /app/tests/; and (b) SMTP hang blocking the single async worker, mitigated by skipping the one budget-email test and verifying captcha replay via the reviews endpoint which shares the same consume_captcha_token() code path."
+}

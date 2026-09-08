@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="2" failures="0" skipped="0" tests="2" time="0.189" timestamp="2026-09-08T10:15:00.933423+00:00" hostname="agent-env-6dd3a99c-cad2-4820-bc6d-532d100d33de"><testcase classname="" name="backend.tests.test_admin_sectors_and_sitemap" time="0.000"><error message="collection failure">ImportError while importing test module '/app/backend/tests/test_admin_sectors_and_sitemap.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ModuleNotFoundError: No module named 'tests.test_admin_sectors_and_sitemap'</error></testcase><testcase classname="" name="backend.tests.test_sectors_and_regression" time="0.000"><error message="collection failure">ImportError while importing test module '/app/backend/tests/test_sectors_and_regression.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   ModuleNotFoundError: No module named 'tests.test_sectors_and_regression'</error></testcase></testsuite></testsuites>

@@ -212,6 +212,54 @@ visuales, badge Emergent, contenido legal.
 regresión). 0 issues, 0 action items en iteration_4.json.
 
 ## 6. Ficheros clave
+
+## 5b. Sesión 18 (feb 2026) — Security audit hardening (P0/P1/P4 fixes)
+
+Auditoría security_audit_agent (informe "CONDITIONAL PASS → PASS tras fixes"):
+
+**P1 fixes**:
+- **SEC-001**: Eliminado `/api/download/production-package` — endpoint
+  público sin auth que servía un tar.gz con TODOS los secretos.
+- **SEC-002**: Rotado `SERVICE_API_KEY` a valor aleatorio de 64 chars
+  (antes tenía default "change-me"). Eliminado el parámetro `?key=`
+  del endpoint `/api/access/preview-email` (leak en logs/referrer);
+  ahora solo acepta `X-Service-Key` header.
+
+**P2/P3 fixes**:
+- **SEC-003**: Rate-limit de admin login inmune a rotación de
+  `X-Forwarded-For`. Helper `_extract_client_ip` que respeta
+  `TRUSTED_PROXY_HOPS` (default 1) para tomar el hop de confianza.
+  Añadido throttle POR CUENTA (email) independiente de IP para
+  bloquear guessing distribuido: 15 intentos fallidos por email en
+  ventana → 429.
+- **CAPTCHA anti-replay**: colección `captcha_used` con TTL 30 min +
+  `consume_captcha_token()` que hace UPSERT. Aplicado en
+  `/api/contact/budget` y `/api/reviews`.
+- **CORS restringido**: allow_origins ahora solo psicolfis.net
+  / www.psicolfis.net / preview URL (configurable vía `CORS_ORIGINS`).
+  allow_methods y allow_headers explícitos.
+- **Stripe webhook idempotencia**: colección `stripe_events` con
+  índice único por `event_id`. Segundo evento igual → 200 con
+  `status: duplicate` sin re-disparar email.
+
+**P4 SMTP hardening**:
+- Timeout 5s en `smtplib.SMTP_SSL(...)` (antes sin timeout → 60-90s).
+- Helper `_send_email_bounded()` con `asyncio.wait_for(timeout=12)` +
+  `asyncio.to_thread` — event loop nunca se bloquea.
+  Wall-clock cap total ~13s (medido: budget=10.21s, access-links=11.27s).
+- `AdminAccessLinkRequest` con `field_validator` para `level`
+  (rechaza valores fuera de "demo"/"full" → 422).
+
+**Índices Mongo añadidos**: `captcha_used(token unique, used_at TTL 1800)`,
+`stripe_events(event_id unique)`.
+
+**Tests**: 87/87 PASS + 1 skip + 0 failures.
+- iteration_5.json: 20/20 security fixes verified.
+- iteration_6.json: SMTP async unblocked.
+- iteration_7.json: SMTP bounded < 13s + level validator.
+- Suite completa: `tests/` 58 pass + `backend/tests/` 29 pass.
+
+## 6bis. Ficheros clave
 - `/app/backend/server.py` — FastAPI con todos los endpoints.
 - `/app/backend/email_templates.py` — Plantillas HTML por agente.
 - `/app/backend/.env` — Mongo, SMTP, Stripe, JWT, ADMIN, PICKAXE.

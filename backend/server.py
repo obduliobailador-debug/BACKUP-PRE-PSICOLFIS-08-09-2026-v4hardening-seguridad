@@ -14,11 +14,37 @@ import secrets
 import random
 import time
 import json
+import asyncio
 import jwt as pyjwt
+
+
+# --- Bounded email helpers ---------------------------------------------------
+
+SMTP_HARD_TIMEOUT = 12  # asyncio wall-clock cap for SMTP sends
+
+
+async def _send_email_bounded(fn, /, **kwargs) -> bool:
+    """Run a blocking SMTP helper in a worker thread with a hard wall-clock cap.
+
+    Falls back to `False` on TimeoutError or any exception so the caller can
+    persist `email_sent=false` and surface a graceful UX message instead of
+    hanging or 500-ing.
+    """
+    try:
+        return await asyncio.wait_for(
+            asyncio.to_thread(fn, **kwargs),
+            timeout=SMTP_HARD_TIMEOUT,
+        )
+    except asyncio.TimeoutError:
+        logger.error(f"SMTP send exceeded {SMTP_HARD_TIMEOUT}s cap for {fn.__name__}")
+        return False
+    except Exception as e:
+        logger.error(f"SMTP send crashed in {fn.__name__}: {e}")
+        return False
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, Field, ConfigDict, EmailStr, field_validator
 from typing import List, Optional, Dict
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -328,9 +354,11 @@ def send_purchase_email(
         message.attach(part1)
         message.attach(part2)
         
-        # Send email using SSL
+        # Send email using SSL with a 5s timeout so an unreachable host
+        # doesn't block the request for 60-90s (DoS surface). See also the
+        # asyncio.wait_for wrapper at the call sites for a hard <13s cap.
         context = ssl.create_default_context()
-        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context) as server:
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context, timeout=5) as server:
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.sendmail(SMTP_FROM, customer_email, message.as_string())
         
@@ -422,7 +450,7 @@ Responde a este correo para contactar directamente con el cliente.
         message.attach(MIMEText(html, "html"))
 
         context = ssl.create_default_context()
-        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context) as server:
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context, timeout=5) as server:
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.sendmail(SMTP_FROM, SMTP_FROM, message.as_string())
 
@@ -482,6 +510,8 @@ def _build_captcha_signature(answer: str, issued_at: int) -> str:
 
 
 def verify_captcha(token: str, user_answer: str) -> bool:
+    """Verify HMAC signature and freshness. Does NOT enforce single-use;
+    call `consume_captcha_token` afterwards to burn it in Mongo."""
     try:
         if not token or "." not in token:
             return False
@@ -492,6 +522,24 @@ def verify_captcha(token: str, user_answer: str) -> bool:
         expected = _build_captcha_signature(user_answer.strip(), issued_at)
         return hmac.compare_digest(expected, signature)
     except Exception:
+        return False
+
+
+async def consume_captcha_token(token: str) -> bool:
+    """Mark a captcha token as used so it can't be replayed. Returns True on
+    first use, False if already consumed. Uses `captcha_used` collection with
+    a Mongo TTL index (30 min) so old entries auto-purge."""
+    try:
+        now = datetime.now(timezone.utc)
+        res = await db.captcha_used.update_one(
+            {"token": token},
+            {"$setOnInsert": {"token": token, "used_at": now}},
+            upsert=True,
+        )
+        return res.upserted_id is not None
+    except Exception as e:
+        logger.error(f"consume_captcha_token failed: {e}")
+        # Fail closed: if the DB write fails, refuse. Better than allowing replay.
         return False
 
 class PaymentTransaction(BaseModel):
@@ -664,25 +712,6 @@ async def stream_video(filename: str, request: Request):
             }
         )
 
-@api_router.get("/download/production-package")
-async def download_production_package():
-    from fastapi.responses import FileResponse
-    import os
-    
-    file_path = "/app/psicolfis-production.tar.gz"
-    
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found")
-    
-    return FileResponse(
-        path=file_path,
-        media_type="application/gzip",
-        filename="psicolfis-production.tar.gz",
-        headers={
-            "Content-Disposition": "attachment; filename=psicolfis-production.tar.gz"
-        }
-    )
-
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
     status_dict = input.model_dump()
@@ -761,6 +790,11 @@ async def submit_budget_request(request: BudgetRequest):
             status_code=400,
             detail="Verificación de seguridad incorrecta. Por favor, vuelve a resolverla."
         )
+    if not await consume_captcha_token(request.captcha_token):
+        raise HTTPException(
+            status_code=400,
+            detail="Este captcha ya fue usado. Refresca la página y resuelve el nuevo."
+        )
 
     agente = (request.agente or "").strip()
     mensaje = (request.mensaje or "").strip()
@@ -779,7 +813,8 @@ async def submit_budget_request(request: BudgetRequest):
         "read": False,
     }
 
-    email_sent = send_budget_request_email(
+    email_sent = await _send_email_bounded(
+        send_budget_request_email,
         nombre=nombre,
         email=email,
         telefono=record["telefono"],
@@ -852,6 +887,11 @@ async def create_review(payload: ReviewCreate):
         raise HTTPException(
             status_code=400,
             detail="Verificación de seguridad incorrecta. Por favor, vuelve a resolverla."
+        )
+    if not await consume_captcha_token(payload.captcha_token):
+        raise HTTPException(
+            status_code=400,
+            detail="Este captcha ya fue usado. Refresca la página y resuelve el nuevo."
         )
 
     review = {
@@ -964,21 +1004,19 @@ async def admin_preview_email(
     agent_id: str,
     level: str = "demo",
     customer_name: str = "Obdulio",
-    key: Optional[str] = None,
     x_service_key: Optional[str] = Header(default=None, alias="X-Service-Key"),
 ):
     """Render the welcome email HTML for QA without sending it.
 
     Generates a real signed token tied to the requested agent + level so the
     embedded CTA points to a working /mi-agente/:token URL on production.
-    Auth: SERVICE_API_KEY either as the `X-Service-Key` header or `?key=` query
-    param (so a plain browser link works during preview).
+    Auth: SERVICE_API_KEY via the `X-Service-Key` header only (query-string
+    variant removed to avoid leaks in logs/referrer).
     """
     from fastapi.responses import HTMLResponse
     from email_templates import render_email
 
-    provided = x_service_key or key
-    if not SERVICE_API_KEY or provided != SERVICE_API_KEY:
+    if not SERVICE_API_KEY or not x_service_key or x_service_key != SERVICE_API_KEY:
         raise HTTPException(status_code=403, detail="No autorizado")
 
     info = get_agent_info(agent_id, level=level)
@@ -1104,13 +1142,45 @@ class AdminLoginRequest(BaseModel):
     password: str
 
 
+def _extract_client_ip(request: Request) -> str:
+    """Return the client IP, trusting only the first hop from x-forwarded-for
+    when we run behind a single reverse proxy. Prevents lockout bypass by
+    attackers that rotate the XFF header themselves.
+
+    The `TRUSTED_PROXY_HOPS` env var (default 1) tells us how many trusted
+    hops precede us. We take the value at index -N from the XFF list.
+    """
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        try:
+            hops = int(os.environ.get("TRUSTED_PROXY_HOPS", "1"))
+        except ValueError:
+            hops = 1
+        parts = [p.strip() for p in xff.split(",") if p.strip()]
+        if parts:
+            # -hops indexes from the right; clamp to first element as safe fallback
+            idx = max(-len(parts), -max(hops, 1))
+            return parts[idx]
+    return request.client.host if request.client else "unknown"
+
+
 @api_router.post("/admin/login")
 async def admin_login(payload: AdminLoginRequest, request: Request):
     email = payload.email.lower().strip()
-    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown").split(",")[0].strip()
+    ip = _extract_client_ip(request)
     identifier = f"{ip}:{email}"
     now = datetime.now(timezone.utc)
     window_start = now - timedelta(minutes=LOGIN_LOCK_WINDOW_MIN)
+
+    # Per-account throttle (independent of IP): stops distributed guessing
+    # from rotating XFF or coming through multiple exit nodes.
+    account_failed = await db.login_attempts.count_documents({
+        "email": email,
+        "ts": {"$gte": window_start.isoformat()},
+        "success": False,
+    })
+    if account_failed >= LOGIN_LOCK_MAX_ATTEMPTS * 3:
+        raise HTTPException(status_code=429, detail="Demasiados intentos para esta cuenta. Espera unos minutos.")
 
     recent_failed = await db.login_attempts.count_documents({
         "identifier": identifier,
@@ -1229,6 +1299,14 @@ class AdminAccessLinkRequest(BaseModel):
     days_valid: Optional[int] = None
     send_email: bool = True
 
+    @field_validator("level")
+    @classmethod
+    def _validate_level(cls, v: str) -> str:
+        v = (v or "full").lower().strip()
+        if v not in ("demo", "full"):
+            raise ValueError("level debe ser 'demo' o 'full'")
+        return v
+
 
 def _decode_jti(token: str) -> str:
     try:
@@ -1266,7 +1344,8 @@ async def _create_and_persist_access_link(
     email_status = "skipped"
     last_sent_at = None
     if send_email:
-        ok = send_purchase_email(
+        ok = await _send_email_bounded(
+            send_purchase_email,
             customer_email=customer_email,
             customer_name=customer_name or "",
             agent_name=info["name"],
@@ -1340,7 +1419,8 @@ async def admin_resend_access_link(
     if rec.get("revoked"):
         raise HTTPException(status_code=400, detail="No se puede reenviar un enlace revocado")
 
-    ok = send_purchase_email(
+    ok = await _send_email_bounded(
+        send_purchase_email,
         customer_email=rec["customer_email"],
         customer_name=rec.get("customer_name", ""),
         agent_name=rec.get("agent_name") or rec.get("agent_id", "").upper(),
@@ -1643,6 +1723,11 @@ async def on_startup():
         await db.revoked_tokens.create_index("jti", unique=True)
         await db.sectors.create_index("slug", unique=True)
         await db.sectors.create_index([("created_at", 1)])
+        # Anti-replay: captcha_used entries expire after 30 min (max token TTL)
+        await db.captcha_used.create_index("token", unique=True)
+        await db.captcha_used.create_index("used_at", expireAfterSeconds=1800)
+        # Stripe idempotency
+        await db.stripe_events.create_index("event_id", unique=True)
     except Exception as e:
         logger.error(f"Index creation error: {e}")
 
@@ -1821,6 +1906,22 @@ async def stripe_webhook(request: Request):
 
         event = json.loads(body.decode("utf-8"))
 
+        # Idempotency: swallow replayed webhook events by remembering the id.
+        event_id = event.get("id")
+        if event_id:
+            dedup = await db.stripe_events.update_one(
+                {"event_id": event_id},
+                {"$setOnInsert": {
+                    "event_id": event_id,
+                    "type": event.get("type"),
+                    "received_at": datetime.now(timezone.utc).isoformat(),
+                }},
+                upsert=True,
+            )
+            if dedup.upserted_id is None:
+                logger.info(f"Stripe webhook event {event_id} already processed, skipping.")
+                return JSONResponse(content={"status": "duplicate", "event_id": event_id}, status_code=200)
+
         event_type = event.get("type")
         if event_type != "checkout.session.completed":
             # Acknowledge other events but ignore them
@@ -1880,7 +1981,8 @@ async def stripe_webhook(request: Request):
             agent_info = AGENT_CATALOGUE.get(agent_id, {})
             agent_name = agent_info.get("name", agent_id.upper())
 
-            email_sent = send_purchase_email(
+            email_sent = await _send_email_bounded(
+                send_purchase_email,
                 customer_email=customer_email,
                 customer_name=customer_name,
                 agent_name=agent_name,
@@ -1911,9 +2013,12 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[o.strip() for o in os.environ.get(
+        'CORS_ORIGINS',
+        'https://psicolfis.net,https://www.psicolfis.net'
+    ).split(',') if o.strip()],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Service-Key", "Stripe-Signature"],
 )
 
 @app.on_event("shutdown")

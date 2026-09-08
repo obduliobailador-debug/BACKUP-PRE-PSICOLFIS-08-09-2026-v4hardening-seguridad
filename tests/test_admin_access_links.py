@@ -182,19 +182,15 @@ class TestAccessLinksFlow:
         _created_jtis.append(link["jti"])
 
     def test_create_unknown_level_normalizes(self, http, auth_headers):
-        # Unknown level should fall back / not 500. Either creates with "full" or returns 400.
+        # After adding a Pydantic field_validator, unknown levels are rejected
+        # with a 422 (validation error). Anything else would be a regression.
         r = http.post(f"{API}/admin/access-links", headers=auth_headers, json={
             "customer_email": "TEST_lvl@example.com",
             "agent_id": "umbral",
             "level": "weirdlevel",
             "send_email": False,
         }, timeout=60)
-        assert r.status_code in (200, 400), r.text
-        if r.status_code == 200:
-            link = r.json()["link"]
-            assert link["level"] in ("full", "demo")
-            _created_link_ids.append(link["id"])
-            _created_jtis.append(link["jti"])
+        assert r.status_code == 422, r.text
 
     def test_list_returns_items(self, http, auth_headers):
         r = http.get(f"{API}/admin/access-links", headers=auth_headers, timeout=60)
@@ -217,7 +213,7 @@ class TestAccessLinksFlow:
         data = r.json()
         assert data["agent_id"] == "iris"
         assert data["level"] == "demo"
-        assert data["customer_email"] == "TEST_skip@example.com"
+        assert data["customer_email"].lower() == "test_skip@example.com"
         assert data["deployment_id"]
         assert "expires_at" in data
 

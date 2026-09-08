@@ -1,0 +1,57 @@
+{
+  "summary": "Iteration 7: SMTP-bounded fix + AdminAccessLinkRequest.level validation verified. Both SMTP-unreachable code paths now finish in ~10-11s wall-clock (well under 15s target and under the <13s stretch goal). Level Pydantic validator rejects 'invalid' with 422, accepts 'demo'/'full', and normalizes 'DEMO' -> 'demo'. Regression: sectors=3, admin login, /api/reviews (fresh captcha) all pass. All 5 items in the review request are satisfied.",
+  "verified_items": {
+    "1_smtp_bounded_budget": {"status": "PASS", "elapsed_seconds": 10.21, "endpoint": "POST /api/contact/budget", "http_status": 502, "target": "<15s (goal <13s)"},
+    "2_smtp_bounded_access_links": {"status": "PASS", "elapsed_seconds": 11.27, "endpoint": "POST /api/admin/access-links (send_email=true)", "http_status": 200, "email_status_field": "failed (expected in preview - SMTP unreachable)"},
+    "3_level_validation": {
+      "invalid_returns_422": "PASS",
+      "demo_ok": "PASS (link.level == 'demo')",
+      "full_ok": "PASS (link.level == 'full')",
+      "uppercase_DEMO_normalizes": "PASS (link.level == 'demo')"
+    },
+    "4_regression_sectors_admin": {"sectors_count": 3, "admin_login": "200 OK", "backend_suite": "29/29 PASS"},
+    "5_regression_reviews_fresh_captcha": "PASS (POST /api/reviews with author/rating/text/captcha -> 200)"
+  },
+  "code_review": {
+    "helper": "_send_email_bounded at server.py:26 correctly wraps asyncio.to_thread with asyncio.wait_for(timeout=12). Catches asyncio.TimeoutError and generic Exception, returns False so callers can persist email_status='failed'.",
+    "smtp_ssl_timeout_5s": "server.py:361 and :453 both use smtplib.SMTP_SSL(..., timeout=5). Combined with the 12s asyncio hard cap this yields observed 10-11s wall-clock (single TCP connect ~5s + SSL wrap ~5s, well under the cap).",
+    "level_validator": "server.py:1302 field_validator normalizes to lowercase and rejects anything outside {'demo','full'} -> Pydantic 422. Correct.",
+    "belt_and_braces": "Good separation: smtplib per-socket timeout limits worst-case failure of each syscall; asyncio.wait_for provides hard wall-clock ceiling regardless of future smtplib internals. Recommended by previous iteration and now implemented."
+  },
+  "backend_issues": {
+    "critical": [],
+    "minor": [],
+    "pre_existing_unrelated": [
+      {"test": "tests/test_admin_access_links.py::test_create_unknown_level_normalizes", "issue": "Test expected old behavior (unknown level silently normalized). Now correctly rejected with 422 per new validator. Test is out-of-date, NOT a code bug. Recommend deleting/updating that pre-existing test."},
+      {"test": "tests/test_admin_access_links.py::test_validate_token_works", "issue": "Pre-existing: customer_email stored/returned lowercased ('test_skip@example.com' vs 'TEST_skip@example.com'). Unchanged by this iteration."},
+      {"test": "tests/test_smtp_async_timing.py::test_access_link_creation_with_send_email", "issue": "Pre-existing iteration-6 test checks top-level 'email_sent'/'id' but response shape is {success, link:{id,email_status}}. Assertion out-of-date; iteration-7 test in test_iteration7_smtp_and_validation.py uses correct shape."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/tests/test_iteration7_smtp_and_validation.py",
+    "/app/test_reports/pytest/iter7_tests.xml",
+    "/app/test_reports/pytest/iter7_tests_all.xml",
+    "/app/test_reports/pytest/iter7_backend_tests.xml"
+  ],
+  "action_items": [
+    "(Optional cleanup) Update or remove 3 pre-existing tests whose assertions became stale after the level validator + response-shape stabilization: (a) test_create_unknown_level_normalizes -> should now expect 422, (b) test_validate_token_works -> compare lowercased emails, (c) test_smtp_async_timing.py::test_access_link_creation_with_send_email -> check body['link']['email_status'] instead of top-level 'email_sent'.",
+    "(Nice-to-have) server.py is still ~2027 lines; splitting into modules would improve maintainability."
+  ],
+  "critical_code_review_comments": [
+    "SMTP fix is now spec-compliant: 10-11s wall-clock << 15s cap, event loop is not blocked (verified in iteration 6), no coroutine bugs.",
+    "AdminAccessLinkRequest.level validator is defensive: case-insensitive + whitespace-strip + explicit allow-list. Good.",
+    "Pre-existing stale tests in tests/test_admin_access_links.py should be updated to reflect the new (correct) validator behavior."
+  ],
+  "updated_files": ["/app/tests/test_iteration7_smtp_and_validation.py (new)"],
+  "success_rate": {
+    "backend_iter7_scope": "9/9 PASS (100%). Wall-clock: budget=10.21s, access-links=11.27s (both under 13s stretch goal).",
+    "backend_full_regression": "backend/tests 29/29 PASS + tests/ 55 pass + 1 skip + 3 stale-assertion failures (all pre-existing, unrelated)."
+  },
+  "test_credentials": "Admin obdulio@psicolfis.net / Clau49006@. (unchanged)",
+  "seed_data_creation": "Ephemeral test entries: 5 TEST_iter7_* access-link records + 1 review + 1 captcha_used. All prefixed TEST_ / non-destructive.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 7 spec is fully met. Wall-clock is 10-11s (5s SMTP_SSL timeout + 5s SSL wrap) - if further tightening is needed, drop SMTP_SSL timeout to 3s. Three pre-existing tests in /app/tests/test_admin_access_links.py + /app/tests/test_smtp_async_timing.py have stale assertions and should be updated, not treated as bugs.",
+  "rca of the issue": "N/A - no new bugs found. Combination of smtplib.SMTP_SSL(timeout=5) + asyncio.wait_for(timeout=12) around asyncio.to_thread produces bounded wall-clock ~10-11s in the SMTP-unreachable path, comfortably under the 15s target and under the 13s stretch goal."
+}
