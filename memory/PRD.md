@@ -365,6 +365,13 @@ sobre los 3 agentes (cuántos pagos confirmados por agente en los
 de un vistazo qué agente vende mejor sin entrar en Stripe.
 
 ## 11. Changelog reciente
+- **2026-02-08 · Refactor frontend a módulos** — `App.js` pasa de
+  3483 líneas monolíticas a **39 líneas de router puro**. Nueva
+  estructura: `api.js` (constantes), `lib/seo.js`, `hooks/{useScrollReveal,useGA4}.js`,
+  `data/{agents,faq,sectorIcons}.js`, `components/WhatsAppFAB.jsx`,
+  `pages/{Home,AgentesPage,SuccessPage,CancelPage,LegalPage,MiAgentePage,SolucionesIndexPage,SectorPage}.jsx`,
+  `pages/admin/{AdminPage,AdminLogin,AdminBudgets,AdminReviews,AdminAccessLinks,AdminSectors,useAdminApi}.jsx`.
+  Testing agent (iteration_12): 11 rutas OK, 0 errores de consola, admin flows completos.
 - **2026-02-08 · Refactor backend a módulos** — `server.py` pasa de
   2026 líneas monolíticas a **72 líneas de bootstrap**. Nuevos módulos:
   `config.py` (env/mongo/logger), `catalogues.py` (agentes/sectores
