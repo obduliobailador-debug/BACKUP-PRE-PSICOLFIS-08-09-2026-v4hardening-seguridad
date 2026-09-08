@@ -123,7 +123,7 @@ body {
   padding: 20px;
   width: 100%;
   overflow-y: auto;
-  background-image: url('https://customer-assets.emergentagent.com/job_checkout-flow-39/artifacts/ybpmxnwi_ChatGPT%20PSICOLFIS%20DORADOS%2011%20dic%202025%2C%2019_30_34.jpg');
+  background-image: var(--bg-dorado);
   background-size: cover;
   background-position: center;
   position: relative;
@@ -623,7 +623,7 @@ body {
   justify-content: center;
   padding: 100px 40px 60px 40px;
   position: relative;
-  background-image: url('https://customer-assets.emergentagent.com/job_checkout-flow-39/artifacts/ybpmxnwi_ChatGPT%20PSICOLFIS%20DORADOS%2011%20dic%202025%2C%2019_30_34.jpg');
+  background-image: var(--bg-dorado);
   background-size: cover;
   background-position: center;
 }
@@ -4210,7 +4210,7 @@ body:has(.admin-login-page) #google_translate_wrapper { display: none !important
   color: #0f172a;
   background:
     linear-gradient(135deg, rgba(255, 247, 237, 0.62) 0%, rgba(238, 242, 255, 0.72) 45%, rgba(250, 245, 255, 0.68) 100%),
-    url("https://customer-assets.emergentagent.com/job_repo-modify-zone/artifacts/6sl38n35_Fondowebsectores.jpg") center top / cover no-repeat fixed;
+    var(--bg-sectors) center top / cover no-repeat fixed;
 }
 .soluciones-page::before {
   content: "";
@@ -4388,7 +4388,7 @@ body:has(.admin-login-page) #google_translate_wrapper { display: none !important
   color: #0f172a; min-height: 100vh;
   background:
     linear-gradient(135deg, rgba(255, 247, 237, 0.66) 0%, rgba(238, 242, 255, 0.76) 45%, rgba(250, 245, 255, 0.72) 100%),
-    url("https://customer-assets.emergentagent.com/job_repo-modify-zone/artifacts/6sl38n35_Fondowebsectores.jpg") center top / cover no-repeat fixed;
+    var(--bg-sectors) center top / cover no-repeat fixed;
 }
 .sector-page::before {
   content: "";

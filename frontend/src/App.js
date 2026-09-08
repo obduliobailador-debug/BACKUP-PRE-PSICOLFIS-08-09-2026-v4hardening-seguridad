@@ -625,7 +625,7 @@ const Home = () => {
           <div className="hero-content">
             <div className="hero-logo-box">
               <img
-                src="https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png"
+                src="/images/legacy/psicolfisnet-con-nombre.png"
                 alt="Logo PSICOLFIS.NET - Agentes de IA personalizados"
                 className="hero-logo"
                 width="360"
@@ -681,7 +681,7 @@ const Home = () => {
             
             <div className="transformation-image-large reveal">
               <img
-                src="https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/jd1bv0v9_Imagen%20de%20antes%20y%20despues.jpeg"
+                src="/images/legacy/antes-y-despues.jpeg"
                 alt="Comparativa antes y después: de tareas manuales a automatización con agentes de IA"
                 loading="lazy"
                 width="1200"
@@ -739,7 +739,7 @@ const Home = () => {
                 controls
                 playsInline
                 preload="none"
-                poster="https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png"
+                poster="/images/legacy/psicolfisnet-con-nombre.png"
                 style={{display: 'none'}}
               >
                 <source src="/videos/agentes_ia.mp4" type="video/mp4" />
@@ -1434,7 +1434,7 @@ const Home = () => {
             <div className="footer-content">
               <div className="footer-brand">
                 <img
-                  src="https://customer-assets.emergentagent.com/job_dynamic-psicolfis/artifacts/xu2c0617_PSICOLFISNET_CON%20NOMBRE.png"
+                  src="/images/legacy/psicolfisnet-con-nombre.png"
                   alt="Logo PSICOLFIS.NET"
                   className="footer-logo"
                   loading="lazy"
@@ -3453,6 +3453,14 @@ const SectorPage = () => {
 
 function App() {
   useGA4();
+  useEffect(() => {
+    // Runtime-set CSS variables for legacy background images. Doing this via
+    // JS (instead of CSS url()) avoids webpack's css-loader trying to resolve
+    // absolute paths as JS modules during compilation.
+    const root = document.documentElement.style;
+    root.setProperty('--bg-dorado', "url('/images/legacy/fondo-psicolfis-dorado.jpg')");
+    root.setProperty('--bg-sectors', "url('/images/legacy/fondo-web-sectores.jpg')");
+  }, []);
   return (
     <div className="App">
       <BrowserRouter>

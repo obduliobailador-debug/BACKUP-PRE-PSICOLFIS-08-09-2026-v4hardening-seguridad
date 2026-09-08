@@ -16,6 +16,10 @@ terceros. El admin (Obdulio) gestiona todo desde un back-office en
   `/mi-agente/:token` y `/admin`.
 - **Backend**: FastAPI + Motor (Mongo async) + SMTP SSL + Stripe + JWT
   (PyJWT) + bcrypt.
+  Módulos (post-refactor 2026-02-08): `server.py` (bootstrap, 72 líneas),
+  `config.py`, `catalogues.py`, `models.py`, `security.py`,
+  `email_service.py`, `seed.py`, `routes/public.py`, `routes/admin.py`,
+  `routes/access.py`, `routes/payments.py`.
 - **Pagos**:
   - Payment Links de Stripe (IRIS/ALEX/UMBRAL) con `metadata`
     (`agent_id`, `level`) configurada vía API.
@@ -359,3 +363,14 @@ En el panel admin, añadir un pequeño contador "Conversiones del mes"
 sobre los 3 agentes (cuántos pagos confirmados por agente en los
 últimos 30 días) usando `payment_transactions`. Permite a Obdulio ver
 de un vistazo qué agente vende mejor sin entrar en Stripe.
+
+## 11. Changelog reciente
+- **2026-02-08 · Refactor backend a módulos** — `server.py` pasa de
+  2026 líneas monolíticas a **72 líneas de bootstrap**. Nuevos módulos:
+  `config.py` (env/mongo/logger), `catalogues.py` (agentes/sectores
+  seed), `models.py` (Pydantic), `security.py` (JWT/bcrypt/captcha),
+  `email_service.py` (SMTP async wrapper), `seed.py` (startup seeds +
+  índices), `routes/{public,admin,access,payments}.py`. Los 62 tests
+  de regresión (backend/tests + tests/) siguen pasando al 100%. Sin
+  cambios de comportamiento visible: mismos endpoints, mismas
+  respuestas, misma auth.
