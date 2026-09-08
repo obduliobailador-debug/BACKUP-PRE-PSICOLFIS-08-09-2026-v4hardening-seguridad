@@ -365,6 +365,15 @@ sobre los 3 agentes (cuántos pagos confirmados por agente en los
 de un vistazo qué agente vende mejor sin entrar en Stripe.
 
 ## 11. Changelog reciente
+- **2026-02-08 · Home.jsx desagregado en secciones** — `Home.jsx` pasa
+  de 1296 → **548 líneas** (orchestrator con modales in-line). 14
+  secciones extraídas a `/pages/home/`: `PromoModal`, `Navbar`,
+  `HeroSection`, `TransformationSection`, `VideoSection`, `WhySection`,
+  `SuperAgentsSection`, `SectorsSection`, `ProcessSection`,
+  `PricingSection`, `ReviewsSection`, `FaqSection` (self-contained
+  con propio `expandedFaq` state), `Footer`, `CookieBanner`
+  (self-contained con localStorage). Testing agent (iteration_13): 0
+  regresiones, comportamiento idéntico al iteration 12.
 - **2026-02-08 · Refactor frontend a módulos** — `App.js` pasa de
   3483 líneas monolíticas a **39 líneas de router puro**. Nueva
   estructura: `api.js` (constantes), `lib/seo.js`, `hooks/{useScrollReveal,useGA4}.js`,
