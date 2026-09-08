@@ -1,4 +1,5 @@
 import "@/App.css";
+import { useEffect } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import { useGA4 } from "./hooks/useGA4";
@@ -19,6 +20,14 @@ import { AdminPage } from "./pages/admin/AdminPage";
  */
 function App() {
   useGA4();
+  useEffect(() => {
+    // Runtime-set CSS variables for legacy background images. Doing this via
+    // JS (instead of CSS url()) avoids webpack's css-loader trying to resolve
+    // absolute paths as JS modules during compilation.
+    const root = document.documentElement.style;
+    root.setProperty('--bg-dorado', "url('/images/legacy/fondo-psicolfis-dorado.jpg')");
+    root.setProperty('--bg-sectors', "url('/images/legacy/fondo-web-sectores.jpg')");
+  }, []);
   return (
     <BrowserRouter>
       <Routes>
