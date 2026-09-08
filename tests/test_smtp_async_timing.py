@@ -20,6 +20,11 @@ if not BASE_URL:
                 BASE_URL = line.split("=", 1)[1].strip().rstrip("/")
                 break
 
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "obdulio@psicolfis.net")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD") or ""
+if not ADMIN_PASSWORD:
+    pytest.skip("ADMIN_PASSWORD env var required to run these tests", allow_module_level=True)
+
 
 def _solve_captcha():
     r = requests.get(f"{BASE_URL}/api/captcha", timeout=10)
@@ -80,7 +85,7 @@ class TestAdminAccessLinksSendEmail:
     def _login(self):
         r = requests.post(
             f"{BASE_URL}/api/admin/login",
-            json={"email": "obdulio@psicolfis.net", "password": "Clau49006@."},
+            json={"email": ADMIN_EMAIL, "password": ADMIN_PASSWORD},
             timeout=15,
         )
         assert r.status_code == 200, r.text

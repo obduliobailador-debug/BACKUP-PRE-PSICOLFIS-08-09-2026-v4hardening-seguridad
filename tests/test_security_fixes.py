@@ -37,7 +37,10 @@ with open("/app/backend/.env") as f:
 
 SERVICE_API_KEY = BACKEND_ENV.get("SERVICE_API_KEY", "")
 ADMIN_EMAIL = BACKEND_ENV.get("ADMIN_EMAIL", "obdulio@psicolfis.net")
-ADMIN_PASSWORD = BACKEND_ENV.get("ADMIN_PASSWORD", "Clau49006@.")
+ADMIN_PASSWORD = BACKEND_ENV.get("ADMIN_PASSWORD") or os.environ.get("ADMIN_PASSWORD") or ""
+if not ADMIN_PASSWORD:
+    import pytest
+    pytest.skip("ADMIN_PASSWORD env var required to run these tests", allow_module_level=True)
 MONGO_URL = BACKEND_ENV.get("MONGO_URL", "mongodb://localhost:27017")
 DB_NAME = BACKEND_ENV.get("DB_NAME", "test_database")
 

@@ -27,7 +27,10 @@ if not BASE_URL:
                 break
 
 ADMIN_EMAIL = "obdulio@psicolfis.net"
-ADMIN_PASSWORD = "Clau49006@."
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD") or ""
+if not ADMIN_PASSWORD:
+    import pytest
+    pytest.skip("ADMIN_PASSWORD env var required to run these tests", allow_module_level=True)
 
 ORIGINAL_SLUGS = {"inmobiliarias", "clinicas-dentales", "salones-belleza"}
 TEST_SLUG = "test-sector"

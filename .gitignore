@@ -93,3 +93,7 @@ credentials.json
 *.pem
 *.key
 .credentials
+
+# Internal test reports and QA credentials — never publish
+test_reports/
+memory/test_credentials.md
