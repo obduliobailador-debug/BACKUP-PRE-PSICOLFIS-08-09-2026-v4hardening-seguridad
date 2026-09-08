@@ -5,4 +5,4 @@ Disallow: /success
 Disallow: /cancel
 Disallow: /api/
 
-Sitemap: https://psicolfis.net/sitemap.xml
+Sitemap: https://psicolfis.net/api/sitemap.xml

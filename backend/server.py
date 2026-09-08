@@ -175,10 +175,40 @@ SECTOR_CATALOGUE = [
 
 def _public_sector(s: dict, *, include_deployment: bool = False) -> dict:
     """Serialize a sector for the public API (optionally with deployment id)."""
-    out = {k: v for k, v in s.items() if k != "deployment_env"}
+    out = {k: v for k, v in s.items() if k not in ("deployment_env", "_id", "deployment_id", "hidden", "deleted_at", "created_at", "updated_at")}
     if include_deployment:
-        out["deployment_id"] = os.environ.get(s.get("deployment_env", ""), "") or ""
+        # Prefer stored deployment_id (edited from admin); fall back to env var for legacy seed
+        stored = s.get("deployment_id", "") if isinstance(s, dict) else ""
+        env_val = os.environ.get(s.get("deployment_env", ""), "") if s.get("deployment_env") else ""
+        out["deployment_id"] = stored or env_val or ""
     return out
+
+
+async def seed_sectors_if_empty():
+    """Seed the `sectors` Mongo collection from the in-code catalogue.
+
+    Runs on startup. Only inserts sectors that don't yet exist by slug so it's
+    idempotent and preserves any admin edits. `deployment_id` is resolved from
+    the corresponding env var at seed time so operators can pre-configure
+    Pickaxe deployments through .env if they prefer.
+    """
+    for s in SECTOR_CATALOGUE:
+        existing = await db.sectors.find_one({"slug": s["slug"]})
+        if existing:
+            continue
+        doc = {**s}
+        # Materialize deployment id from env for first seed
+        env_key = doc.pop("deployment_env", "")
+        doc["deployment_env"] = env_key  # keep for future reads
+        doc["deployment_id"] = os.environ.get(env_key, "") if env_key else ""
+        doc["hidden"] = False
+        doc["deleted_at"] = None
+        now = datetime.now(timezone.utc).isoformat()
+        doc["created_at"] = now
+        doc["updated_at"] = now
+        doc["id"] = str(uuid.uuid4())
+        await db.sectors.insert_one(doc)
+        logger.info(f"Seeded sector: {s['slug']}")
 
 
 def get_agent_info(agent_id: str, level: str = "full") -> Optional[Dict]:
@@ -505,21 +535,74 @@ async def root():
 
 @api_router.get("/sectors")
 async def list_sectors():
-    """Public list of B2B verticals shown on /soluciones."""
+    """Public list of B2B verticals shown on /soluciones.
+
+    Reads from MongoDB, excludes hidden and soft-deleted sectors.
+    """
+    cursor = db.sectors.find(
+        {"hidden": {"$ne": True}, "deleted_at": None},
+        {"_id": 0}
+    ).sort("created_at", 1)
+    items = await cursor.to_list(100)
     return {
-        "items": [_public_sector(s, include_deployment=False) for s in SECTOR_CATALOGUE],
-        "total": len(SECTOR_CATALOGUE),
+        "items": [_public_sector(s, include_deployment=False) for s in items],
+        "total": len(items),
     }
 
 
 @api_router.get("/sectors/{slug}")
 async def get_sector(slug: str):
-    """Public detail for a single sector (includes Pickaxe deployment id)."""
+    """Public detail for a single sector (includes Pickaxe deployment id).
+
+    Hidden and soft-deleted sectors return 404 publicly.
+    """
     slug = (slug or "").lower().strip()
-    sector = next((s for s in SECTOR_CATALOGUE if s["slug"] == slug), None)
+    sector = await db.sectors.find_one(
+        {"slug": slug, "hidden": {"$ne": True}, "deleted_at": None},
+        {"_id": 0}
+    )
     if not sector:
         raise HTTPException(status_code=404, detail="Sector no encontrado")
     return _public_sector(sector, include_deployment=True)
+
+
+@app.get("/sitemap.xml")
+@api_router.get("/sitemap.xml")
+async def dynamic_sitemap():
+    """Dynamic sitemap that always includes all active sector landings.
+
+    Exposed both at /sitemap.xml (declared in robots.txt) AND /api/sitemap.xml
+    because the K8s ingress only routes /api/* to the backend; the /api/
+    version is the reachable one from the public internet.
+    """
+    from fastapi.responses import Response
+    base = PUBLIC_BASE_URL
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    static_paths = [
+        ("/", "1.0", "weekly"),
+        ("/agentes", "0.9", "weekly"),
+        ("/soluciones", "0.9", "weekly"),
+        ("/legal", "0.3", "yearly"),
+    ]
+    cursor = db.sectors.find(
+        {"hidden": {"$ne": True}, "deleted_at": None},
+        {"_id": 0, "slug": 1}
+    )
+    active_slugs = await cursor.to_list(100)
+    sector_paths = [(f"/soluciones/{s['slug']}", "0.85", "monthly") for s in active_slugs]
+
+    urls_xml = "\n".join(
+        f"  <url><loc>{base}{path}</loc><lastmod>{now}</lastmod><changefreq>{cf}</changefreq><priority>{pri}</priority></url>"
+        for path, pri, cf in static_paths + sector_paths
+    )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{urls_xml}\n"
+        "</urlset>\n"
+    )
+    return Response(content=xml, media_type="application/xml")
 
 @api_router.get("/video/{filename}")
 async def stream_video(filename: str, request: Request):
@@ -1325,6 +1408,170 @@ async def admin_delete_access_link(
     return {"success": True}
 
 
+# ---- Admin: sector CMS -----------------------------------------------------
+
+import re as _re
+
+_SLUG_RE = _re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+
+class SectorMetric(BaseModel):
+    label: str
+    value: str
+
+
+class SectorUpsertRequest(BaseModel):
+    slug: str
+    name: str
+    icon: Optional[str] = ""
+    tagline: Optional[str] = ""
+    headline: Optional[str] = ""
+    description: Optional[str] = ""
+    problem: Optional[str] = ""
+    solution: Optional[str] = ""
+    ideal_for: Optional[str] = ""
+    demo_intro: Optional[str] = ""
+    use_cases: List[str] = []
+    metrics: List[SectorMetric] = []
+    deployment_id: Optional[str] = ""
+    hidden: bool = False
+
+
+class SectorVisibilityRequest(BaseModel):
+    hidden: bool
+
+
+def _validate_slug(slug: str) -> str:
+    slug = (slug or "").lower().strip()
+    if not _SLUG_RE.match(slug):
+        raise HTTPException(status_code=400, detail="Slug inválido. Usa solo minúsculas, números y guiones (ej. mi-sector).")
+    return slug
+
+
+@api_router.get("/admin/sectors")
+async def admin_list_sectors(admin: dict = Depends(get_current_admin)):
+    """Full list including hidden and soft-deleted sectors (for the CMS UI)."""
+    cursor = db.sectors.find({}, {"_id": 0}).sort("created_at", 1)
+    items = await cursor.to_list(200)
+    active = [s for s in items if not s.get("hidden") and not s.get("deleted_at")]
+    hidden = [s for s in items if s.get("hidden") and not s.get("deleted_at")]
+    trash  = [s for s in items if s.get("deleted_at")]
+    return {"items": items, "active": len(active), "hidden": len(hidden), "trash": len(trash)}
+
+
+@api_router.post("/admin/sectors")
+async def admin_create_sector(
+    payload: SectorUpsertRequest,
+    admin: dict = Depends(get_current_admin),
+):
+    slug = _validate_slug(payload.slug)
+    existing = await db.sectors.find_one({"slug": slug})
+    if existing:
+        raise HTTPException(status_code=409, detail="Ya existe un sector con este slug.")
+    now = datetime.now(timezone.utc).isoformat()
+    doc = payload.model_dump()
+    doc["slug"] = slug
+    doc["metrics"] = [m.model_dump() if hasattr(m, 'model_dump') else m for m in (doc.get("metrics") or [])]
+    doc["id"] = str(uuid.uuid4())
+    doc["created_at"] = now
+    doc["updated_at"] = now
+    doc["created_by"] = admin["sub"]
+    doc["deleted_at"] = None
+    doc["deployment_env"] = ""
+    await db.sectors.insert_one(doc)
+    doc.pop("_id", None)
+    return {"success": True, "sector": doc}
+
+
+@api_router.patch("/admin/sectors/{slug}")
+async def admin_update_sector(
+    slug: str,
+    payload: SectorUpsertRequest,
+    admin: dict = Depends(get_current_admin),
+):
+    slug = _validate_slug(slug)
+    existing = await db.sectors.find_one({"slug": slug})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Sector no encontrado")
+
+    new_slug = _validate_slug(payload.slug)
+    if new_slug != slug:
+        collision = await db.sectors.find_one({"slug": new_slug})
+        if collision:
+            raise HTTPException(status_code=409, detail="Ya existe otro sector con ese slug.")
+
+    update = payload.model_dump()
+    update["slug"] = new_slug
+    update["metrics"] = [m.model_dump() if hasattr(m, 'model_dump') else m for m in (update.get("metrics") or [])]
+    update["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.sectors.update_one({"slug": slug}, {"$set": update})
+    doc = await db.sectors.find_one({"slug": new_slug}, {"_id": 0})
+    return {"success": True, "sector": doc}
+
+
+@api_router.post("/admin/sectors/{slug}/visibility")
+async def admin_toggle_sector_visibility(
+    slug: str,
+    payload: SectorVisibilityRequest,
+    admin: dict = Depends(get_current_admin),
+):
+    slug = _validate_slug(slug)
+    res = await db.sectors.update_one(
+        {"slug": slug},
+        {"$set": {"hidden": bool(payload.hidden), "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Sector no encontrado")
+    return {"success": True, "hidden": bool(payload.hidden)}
+
+
+@api_router.delete("/admin/sectors/{slug}")
+async def admin_soft_delete_sector(
+    slug: str,
+    admin: dict = Depends(get_current_admin),
+):
+    """Soft delete: sets deleted_at. Restore possible within 30 days via /restore."""
+    slug = _validate_slug(slug)
+    res = await db.sectors.update_one(
+        {"slug": slug},
+        {"$set": {"deleted_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Sector no encontrado")
+    return {"success": True}
+
+
+@api_router.post("/admin/sectors/{slug}/restore")
+async def admin_restore_sector(
+    slug: str,
+    admin: dict = Depends(get_current_admin),
+):
+    slug = _validate_slug(slug)
+    res = await db.sectors.update_one(
+        {"slug": slug},
+        {"$set": {"deleted_at": None, "updated_at": datetime.now(timezone.utc).isoformat()}},
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Sector no encontrado")
+    return {"success": True}
+
+
+@api_router.delete("/admin/sectors/{slug}/permanent")
+async def admin_hard_delete_sector(
+    slug: str,
+    admin: dict = Depends(get_current_admin),
+):
+    """Hard delete. Only allowed on already soft-deleted sectors."""
+    slug = _validate_slug(slug)
+    existing = await db.sectors.find_one({"slug": slug})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Sector no encontrado")
+    if not existing.get("deleted_at"):
+        raise HTTPException(status_code=400, detail="Primero mueve el sector a la papelera antes de eliminarlo definitivamente.")
+    await db.sectors.delete_one({"slug": slug})
+    return {"success": True}
+
+
 
 async def seed_reviews_if_empty():
     """Insert a few realistic starter reviews if the collection is empty."""
@@ -1384,12 +1631,18 @@ async def on_startup():
     except Exception as e:
         logger.error(f"Seed error: {e}")
     try:
+        await seed_sectors_if_empty()
+    except Exception as e:
+        logger.error(f"Sector seed error: {e}")
+    try:
         await db.admin_users.create_index("email", unique=True)
         await db.login_attempts.create_index("identifier")
         await db.login_attempts.create_index([("ts", 1)])
         await db.access_links.create_index([("created_at", -1)])
         await db.access_links.create_index("id", unique=True)
         await db.revoked_tokens.create_index("jti", unique=True)
+        await db.sectors.create_index("slug", unique=True)
+        await db.sectors.create_index([("created_at", 1)])
     except Exception as e:
         logger.error(f"Index creation error: {e}")
 

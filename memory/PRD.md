@@ -153,6 +153,64 @@ visuales, badge Emergent, contenido legal.
   variable `.env` y redeploy. Guía DNS guardada en
   `/app/memory/crm-subdomain-setup.md`.
 
+### Sesión 17 (feb 2026) — Mejoras Opción C (quick wins + CMS)
+
+**Quick wins**:
+- **Botón flotante WhatsApp** (`WhatsAppFAB`) global en `/soluciones`
+  y páginas de sector. Verde oficial `#25d366`, pulse animado,
+  respeta `prefers-reduced-motion`, oculto en `/admin` y
+  `/mi-agente`.
+- **CTAs WhatsApp** convertidos de `<button onClick>` a `<a href
+  target="_blank" rel="noopener noreferrer">` — mejor accesibilidad,
+  SEO, y middle-click funciona.
+- **Compresión de vídeos** con ffmpeg (`iris/alex/umbral_sonriendo`):
+  14.7 MB → 945 KB (-94%). Preset `veryfast`, CRF 28, escala máx 720p,
+  `+faststart` para streaming progresivo. Originales purgados.
+- **GA4 opcional**: hook `useGA4` que inyecta gtag automáticamente si
+  `REACT_APP_GA4_ID` está definida en `.env`. Vacío por defecto.
+- **JSON-LD Service schema** por sector inyectado dinámicamente en
+  `<head>` con `@context: schema.org`, `@type: Service`, provider
+  PSICOLFIS.NET y `hasOfferCatalog` con casos de uso (rich snippets
+  Google).
+- **SEO canonical URL** configurable via
+  `REACT_APP_PUBLIC_BASE_URL` (ya no hardcoded).
+
+**CMS admin de sectores** (Opción B, decisiones 1.a + 2.b):
+- Backend: migración de `SECTOR_CATALOGUE` (constante en código) a
+  colección MongoDB `sectors` con seed idempotente en startup.
+- Endpoints admin (JWT protected):
+  - `GET /api/admin/sectors` — todos (activos + ocultos + papelera).
+  - `POST /api/admin/sectors` — crear (validación de slug regex).
+  - `PATCH /api/admin/sectors/{slug}` — editar (detecta colisión).
+  - `POST /api/admin/sectors/{slug}/visibility` — ocultar/mostrar.
+    Ocultos → 404 público y desaparecen de Home y sitemap.
+  - `DELETE /api/admin/sectors/{slug}` — soft delete (`deleted_at`).
+  - `POST /api/admin/sectors/{slug}/restore` — restaurar.
+  - `DELETE /api/admin/sectors/{slug}/permanent` — hard delete
+    (solo permitido si ya está soft-deleted).
+- Endpoints públicos `/api/sectors` y `/api/sectors/{slug}` ahora
+  leen de Mongo respetando `hidden` y `deleted_at`.
+- Frontend: 4ª pestaña **"Sectores"** en `/admin` con:
+  - Contadores (activos / ocultos / papelera).
+  - Filtros tabuladores (Activos / Ocultos / Papelera / Todos).
+  - Botón "+ Nuevo sector".
+  - Modal `SectorEditorModal` con formulario completo incluyendo
+    arrays dinámicos (casos de uso, métricas add/remove).
+  - Badges por sector (slug + estado Pickaxe + hidden/trashed).
+  - Acciones por item: Editar · Ocultar/Mostrar · A papelera /
+    Restaurar / Eliminar definitivamente.
+
+**Sitemap dinámico**:
+- Endpoint `GET /api/sitemap.xml` que lee de Mongo y devuelve XML
+  válido con las 4 rutas estáticas + una `<loc>` por cada sector
+  activo. Dual decorator `@app.get + @api_router.get`.
+- Archivo estático `/public/sitemap.xml` eliminado (era obsoleto).
+- `robots.txt` actualizado: `Sitemap: https://psicolfis.net/api/sitemap.xml`.
+- Nota SEO: hay que declarar el nuevo sitemap en Google Search Console.
+
+**Tests**: 29/29 pytest PASS (13 nuevos CMS admin + 3 sitemap + 13
+regresión). 0 issues, 0 action items en iteration_4.json.
+
 ## 6. Ficheros clave
 - `/app/backend/server.py` — FastAPI con todos los endpoints.
 - `/app/backend/email_templates.py` — Plantillas HTML por agente.

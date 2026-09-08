@@ -74,6 +74,60 @@ const setMetaTag = (selector, attr, value) => {
   tag.setAttribute(attr, value);
 };
 
+// Inject Google Analytics 4 once, when REACT_APP_GA4_ID is provided.
+// No-op if the id is missing (safe default for preview).
+const useGA4 = () => {
+  useEffect(() => {
+    const GA_ID = process.env.REACT_APP_GA4_ID;
+    if (!GA_ID) return;
+    if (window.__ga4_loaded) return;
+    window.__ga4_loaded = true;
+    const s = document.createElement('script');
+    s.async = true;
+    s.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`;
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ window.dataLayer.push(arguments); }
+    window.gtag = gtag;
+    gtag('js', new Date());
+    gtag('config', GA_ID, { anonymize_ip: true });
+  }, []);
+};
+
+// Inject / replace a JSON-LD script with a stable id (so we can swap it per route)
+const setJsonLd = (id, data) => {
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('script');
+    el.type = 'application/ld+json';
+    el.id = id;
+    document.head.appendChild(el);
+  }
+  el.textContent = JSON.stringify(data);
+};
+
+// Floating WhatsApp button shown on public pages (Home, /soluciones, /agentes).
+// Uses the backend /api/whatsapp redirect to keep the real number out of the DOM.
+const WhatsAppFAB = ({ text }) => {
+  const url = text
+    ? `${API}/whatsapp?text=${encodeURIComponent(text)}`
+    : `${API}/whatsapp`;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="whatsapp-fab"
+      aria-label="Contactar por WhatsApp"
+      data-testid="whatsapp-fab"
+    >
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.198-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.247-.694.247-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0 0 20.464 3.488"/>
+      </svg>
+    </a>
+  );
+};
+
 const usePageSeo = ({ title, description, canonicalPath, noindex = false }) => {
   useEffect(() => {
     if (title) document.title = title;
@@ -2034,6 +2088,13 @@ const AdminPage = () => {
           >
             Regalar acceso
           </button>
+          <button
+            className={`admin-tab ${tab === "sectors" ? "active" : ""}`}
+            onClick={() => setTab("sectors")}
+            data-testid="admin-tab-sectors"
+          >
+            Sectores
+          </button>
         </nav>
         <button className="admin-logout" onClick={handleLogout} data-testid="admin-logout">
           Cerrar sesión
@@ -2043,6 +2104,7 @@ const AdminPage = () => {
         {tab === "budgets" && <AdminBudgets token={token} onAuthFail={handleLogout} />}
         {tab === "reviews" && <AdminReviews token={token} onAuthFail={handleLogout} />}
         {tab === "gift" && <AdminAccessLinks token={token} onAuthFail={handleLogout} />}
+        {tab === "sectors" && <AdminSectors token={token} onAuthFail={handleLogout} />}
       </main>
     </div>
   );
@@ -2751,6 +2813,255 @@ const SolucionesIndexPage = () => {
           <a href="mailto:obdulio@psicolfis.net">obdulio@psicolfis.net</a>
         </p>
       </footer>
+      <WhatsAppFAB text="Hola Obdulio, vengo desde la página de soluciones y me gustaría más información." />
+    </div>
+  );
+};
+
+
+const emptySector = () => ({
+  slug: "", name: "", icon: "", tagline: "",
+  headline: "", description: "", problem: "", solution: "",
+  ideal_for: "", demo_intro: "",
+  use_cases: [""],
+  metrics: [{ label: "", value: "" }],
+  deployment_id: "",
+  hidden: false,
+});
+
+const AdminSectors = ({ token, onAuthFail }) => {
+  const api = useAdminApi(token, onAuthFail);
+  const [data, setData] = useState({ items: [], active: 0, hidden: 0, trash: 0 });
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("active");
+  const [editor, setEditor] = useState(null); // {mode:'new'|'edit', original:{}, form:{}}
+  const [feedback, setFeedback] = useState(null);
+
+  const reload = async () => {
+    setLoading(true);
+    try {
+      const d = await api.get("/admin/sectors");
+      setData(d);
+    } finally { setLoading(false); }
+  };
+  useEffect(() => { reload(); /* eslint-disable-next-line */ }, [token]);
+
+  const filtered = (data.items || []).filter((s) => {
+    if (filter === "active") return !s.hidden && !s.deleted_at;
+    if (filter === "hidden") return s.hidden && !s.deleted_at;
+    if (filter === "trash")  return !!s.deleted_at;
+    return true;
+  });
+
+  const openNew = () => setEditor({ mode: "new", original: null, form: emptySector() });
+  const openEdit = (s) => setEditor({ mode: "edit", original: s, form: {
+    slug: s.slug, name: s.name, icon: s.icon || "", tagline: s.tagline || "",
+    headline: s.headline || "", description: s.description || "",
+    problem: s.problem || "", solution: s.solution || "",
+    ideal_for: s.ideal_for || "", demo_intro: s.demo_intro || "",
+    use_cases: (s.use_cases && s.use_cases.length ? s.use_cases : [""]),
+    metrics: (s.metrics && s.metrics.length ? s.metrics : [{ label: "", value: "" }]),
+    deployment_id: s.deployment_id || "",
+    hidden: !!s.hidden,
+  }});
+  const closeEditor = () => setEditor(null);
+
+  const save = async () => {
+    if (!editor) return;
+    const f = editor.form;
+    const body = {
+      ...f,
+      use_cases: (f.use_cases || []).filter((x) => x && x.trim()),
+      metrics: (f.metrics || []).filter((m) => m.label && m.value),
+    };
+    try {
+      if (editor.mode === "new") {
+        await api.post("/admin/sectors", body);
+        setFeedback({ type: "ok", msg: "Sector creado correctamente." });
+      } else {
+        await api.patch(`/admin/sectors/${editor.original.slug}`, body);
+        setFeedback({ type: "ok", msg: "Sector actualizado." });
+      }
+      closeEditor();
+      reload();
+    } catch (err) {
+      const msg = err?.response?.data?.detail || "No se pudo guardar el sector.";
+      setFeedback({ type: "error", msg });
+    }
+  };
+
+  const toggleVisibility = async (s) => {
+    try {
+      await api.post(`/admin/sectors/${s.slug}/visibility`, { hidden: !s.hidden });
+      reload();
+    } catch (err) {
+      setFeedback({ type: "error", msg: err?.response?.data?.detail || "Error al cambiar visibilidad." });
+    }
+  };
+  const trashSector = async (s) => {
+    if (!window.confirm(`¿Mover "${s.name}" a la papelera? Podrás restaurarlo durante 30 días.`)) return;
+    try { await api.del(`/admin/sectors/${s.slug}`); reload(); }
+    catch (err) { setFeedback({ type: "error", msg: err?.response?.data?.detail || "Error." }); }
+  };
+  const restore = async (s) => {
+    try { await api.post(`/admin/sectors/${s.slug}/restore`, {}); reload(); }
+    catch (err) { setFeedback({ type: "error", msg: err?.response?.data?.detail || "Error." }); }
+  };
+  const hardDelete = async (s) => {
+    if (!window.confirm(`Eliminar "${s.name}" PERMANENTEMENTE. Esta acción no se puede deshacer.`)) return;
+    try { await api.del(`/admin/sectors/${s.slug}/permanent`); reload(); }
+    catch (err) { setFeedback({ type: "error", msg: err?.response?.data?.detail || "Error." }); }
+  };
+
+  return (
+    <section className="admin-section" data-testid="admin-sectors">
+      <div className="admin-section-head">
+        <h2>Sectores</h2>
+        <div className="admin-meta">
+          <span className="badge">{data.active} activos</span>
+          <span className="badge badge-warn">{data.hidden} ocultos</span>
+          <span className="badge">{data.trash} en papelera</span>
+        </div>
+      </div>
+      <div className="admin-filters">
+        <button className={filter === "active" ? "active" : ""} onClick={() => setFilter("active")}>Activos</button>
+        <button className={filter === "hidden" ? "active" : ""} onClick={() => setFilter("hidden")}>Ocultos</button>
+        <button className={filter === "trash" ? "active" : ""} onClick={() => setFilter("trash")}>Papelera</button>
+        <button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>Todos</button>
+        <button className="admin-primary" onClick={openNew} data-testid="admin-sector-new">+ Nuevo sector</button>
+      </div>
+
+      {feedback && (
+        <div className={`admin-gift-feedback ${feedback.type}`} data-testid="sector-feedback">{feedback.msg}</div>
+      )}
+
+      {loading ? (
+        <div className="admin-loading">Cargando...</div>
+      ) : filtered.length === 0 ? (
+        <div className="admin-empty">No hay sectores en este filtro.</div>
+      ) : (
+        <ul className="admin-list">
+          {filtered.map((s) => (
+            <li key={s.slug} className={`admin-item ${s.hidden ? "is-hidden-sector" : ""} ${s.deleted_at ? "is-trashed" : ""}`} data-testid={`sector-item-${s.slug}`}>
+              <div className="admin-item-head">
+                <div>
+                  <div className="admin-item-title">
+                    <strong>{s.name}</strong>
+                    <span className="admin-tag admin-tag-soft">/{s.slug}</span>
+                    {s.deployment_id
+                      ? <span className="admin-tag admin-tag-ok">Demo configurada</span>
+                      : <span className="admin-tag admin-tag-warn">Sin Pickaxe</span>}
+                    {s.hidden && <span className="admin-tag admin-tag-warn">OCULTO</span>}
+                    {s.deleted_at && <span className="admin-tag admin-tag-warn">EN PAPELERA</span>}
+                  </div>
+                  <div className="admin-item-sub">{s.tagline}</div>
+                </div>
+                <div className="admin-item-actions">
+                  {!s.deleted_at && (
+                    <>
+                      <button onClick={() => openEdit(s)} data-testid={`sector-edit-${s.slug}`}>Editar</button>
+                      <button onClick={() => toggleVisibility(s)} data-testid={`sector-toggle-${s.slug}`}>
+                        {s.hidden ? "Mostrar" : "Ocultar"}
+                      </button>
+                      <button className="danger" onClick={() => trashSector(s)} data-testid={`sector-trash-${s.slug}`}>
+                        A papelera
+                      </button>
+                    </>
+                  )}
+                  {s.deleted_at && (
+                    <>
+                      <button onClick={() => restore(s)} data-testid={`sector-restore-${s.slug}`}>Restaurar</button>
+                      <button className="danger" onClick={() => hardDelete(s)} data-testid={`sector-hard-${s.slug}`}>
+                        Eliminar definitivamente
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {editor && (
+        <SectorEditorModal
+          mode={editor.mode}
+          form={editor.form}
+          setForm={(f) => setEditor({ ...editor, form: f })}
+          onClose={closeEditor}
+          onSave={save}
+        />
+      )}
+    </section>
+  );
+};
+
+const SectorEditorModal = ({ mode, form, setForm, onClose, onSave }) => {
+  const upd = (k) => (e) => setForm({ ...form, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value });
+  const updList = (k, i, v) => {
+    const arr = [...(form[k] || [])]; arr[i] = v; setForm({ ...form, [k]: arr });
+  };
+  const addToList = (k, empty) => setForm({ ...form, [k]: [...(form[k] || []), empty] });
+  const removeFromList = (k, i) => {
+    const arr = [...(form[k] || [])]; arr.splice(i, 1); setForm({ ...form, [k]: arr });
+  };
+
+  return (
+    <div className="budget-modal-overlay" onClick={onClose}>
+      <div className="budget-modal admin-sector-modal" onClick={(e) => e.stopPropagation()} data-testid="sector-editor-modal">
+        <button className="budget-modal-close" onClick={onClose} aria-label="Cerrar">✕</button>
+        <h2>{mode === "new" ? "Nuevo sector" : `Editar · ${form.name}`}</h2>
+
+        <div className="admin-gift-grid">
+          <label>Slug (URL) * <input type="text" value={form.slug} onChange={upd("slug")} placeholder="ej: gimnasios" data-testid="sector-form-slug" /></label>
+          <label>Nombre * <input type="text" value={form.name} onChange={upd("name")} placeholder="ej: Gimnasios y centros fitness" data-testid="sector-form-name" /></label>
+          <label>Icono (id) <input type="text" value={form.icon} onChange={upd("icon")} placeholder="ej: dumbbell" /></label>
+          <label>Deployment ID Pickaxe <input type="text" value={form.deployment_id} onChange={upd("deployment_id")} placeholder="UUID de Pickaxe" data-testid="sector-form-deployment" /></label>
+        </div>
+
+        <label className="admin-modal-full">Tagline <input type="text" value={form.tagline} onChange={upd("tagline")} placeholder="Frase corta para tarjeta" /></label>
+        <label className="admin-modal-full">Headline <input type="text" value={form.headline} onChange={upd("headline")} placeholder="Título grande del hero" /></label>
+        <label className="admin-modal-full">Descripción <textarea rows={3} value={form.description} onChange={upd("description")} /></label>
+        <label className="admin-modal-full">Problema <textarea rows={3} value={form.problem} onChange={upd("problem")} /></label>
+        <label className="admin-modal-full">Solución <textarea rows={3} value={form.solution} onChange={upd("solution")} /></label>
+        <label className="admin-modal-full">Ideal para <input type="text" value={form.ideal_for} onChange={upd("ideal_for")} /></label>
+        <label className="admin-modal-full">Intro de demo <input type="text" value={form.demo_intro} onChange={upd("demo_intro")} /></label>
+
+        <div className="admin-modal-sub">
+          <h4>Casos de uso</h4>
+          {(form.use_cases || []).map((uc, i) => (
+            <div key={i} className="admin-list-row">
+              <input type="text" value={uc} onChange={(e) => updList("use_cases", i, e.target.value)} placeholder={`Caso de uso #${i+1}`} />
+              <button type="button" className="danger" onClick={() => removeFromList("use_cases", i)}>×</button>
+            </div>
+          ))}
+          <button type="button" onClick={() => addToList("use_cases", "")}>+ Añadir caso de uso</button>
+        </div>
+
+        <div className="admin-modal-sub">
+          <h4>Métricas</h4>
+          {(form.metrics || []).map((m, i) => (
+            <div key={i} className="admin-list-row">
+              <input type="text" value={m.label} onChange={(e) => updList("metrics", i, { ...m, label: e.target.value })} placeholder="Etiqueta (ej: Reservas fuera de horario)" />
+              <input type="text" value={m.value} onChange={(e) => updList("metrics", i, { ...m, value: e.target.value })} placeholder="Valor (ej: +35%)" />
+              <button type="button" className="danger" onClick={() => removeFromList("metrics", i)}>×</button>
+            </div>
+          ))}
+          <button type="button" onClick={() => addToList("metrics", { label: "", value: "" })}>+ Añadir métrica</button>
+        </div>
+
+        <label className="admin-modal-full admin-gift-checkbox">
+          <input type="checkbox" checked={!!form.hidden} onChange={upd("hidden")} />
+          <span>Ocultar sector (no aparecerá en /soluciones ni en el Home)</span>
+        </label>
+
+        <div className="admin-modal-footer">
+          <button onClick={onClose}>Cancelar</button>
+          <button className="admin-primary" onClick={onSave} data-testid="sector-form-save">
+            {mode === "new" ? "Crear sector" : "Guardar cambios"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -2918,6 +3229,40 @@ const SectorPage = () => {
     canonicalPath: `/soluciones/${slug || ""}`,
   });
 
+  // Inject JSON-LD Service schema for rich snippets
+  useEffect(() => {
+    if (state.status !== "ok" || !state.data) return;
+    const baseUrl = process.env.REACT_APP_PUBLIC_BASE_URL || "https://psicolfis.net";
+    setJsonLd(`ld-service-${state.data.slug}`, {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      "serviceType": `Agente IA para ${state.data.name}`,
+      "name": state.data.headline,
+      "description": state.data.description,
+      "provider": {
+        "@type": "Organization",
+        "name": "PSICOLFIS.NET",
+        "url": baseUrl,
+      },
+      "areaServed": { "@type": "Country", "name": "España" },
+      "audience": { "@type": "Audience", "audienceType": state.data.ideal_for },
+      "url": `${baseUrl}/soluciones/${state.data.slug}`,
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": `Casos de uso · ${state.data.name}`,
+        "itemListElement": (state.data.use_cases || []).map((uc, i) => ({
+          "@type": "Offer",
+          "position": i + 1,
+          "itemOffered": { "@type": "Service", "name": uc },
+        })),
+      },
+    });
+    return () => {
+      const el = document.getElementById(`ld-service-${state.data.slug}`);
+      if (el) el.remove();
+    };
+  }, [state]);
+
   // Inject Pickaxe bundle once we have a deployment_id
   useEffect(() => {
     if (state.status !== "ok" || !state.data?.deployment_id) return;
@@ -2933,11 +3278,11 @@ const SectorPage = () => {
     document.body.appendChild(s);
   }, [state]);
 
-  const openWhatsApp = (sectorName) => {
+  const whatsappUrlFor = (sectorName) => {
     const text = encodeURIComponent(
       `Hola Obdulio, vengo desde la página de soluciones para ${sectorName} y me gustaría una demo personalizada.`
     );
-    window.open(`${API}/whatsapp?text=${text}`, "_blank", "noopener,noreferrer");
+    return `${API}/whatsapp?text=${text}`;
   };
 
   const openBudget = (sectorName) => {
@@ -2989,14 +3334,16 @@ const SectorPage = () => {
             >
               Solicitar demo personalizada
             </button>
-            <button
+            <a
+              href={whatsappUrlFor(s.name)}
+              target="_blank"
+              rel="noopener noreferrer"
               className="hero-btn secondary"
-              onClick={() => openWhatsApp(s.name)}
               data-testid="sector-cta-whatsapp"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{marginRight:6,verticalAlign:"middle"}}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.198-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.247-.694.247-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0 0 20.464 3.488"/></svg>
               WhatsApp directo
-            </button>
+            </a>
           </div>
           <p className="sector-ideal-for"><strong>Ideal para:</strong> {s.ideal_for}</p>
         </section>
@@ -3079,13 +3426,15 @@ const SectorPage = () => {
             >
               Solicitar demo personalizada
             </button>
-            <button
+            <a
+              href={whatsappUrlFor(s.name)}
+              target="_blank"
+              rel="noopener noreferrer"
               className="hero-btn secondary"
-              onClick={() => openWhatsApp(s.name)}
               data-testid="sector-final-cta-whatsapp"
             >
               Hablar por WhatsApp
-            </button>
+            </a>
           </div>
         </section>
       </main>
@@ -3095,6 +3444,7 @@ const SectorPage = () => {
           ¿Otro sector? Escribe a <a href="mailto:obdulio@psicolfis.net">obdulio@psicolfis.net</a>.
         </p>
       </footer>
+      <WhatsAppFAB text={`Hola Obdulio, vengo desde la página de ${s.name} y quiero una demo personalizada.`} />
     </div>
   );
 };
@@ -3102,6 +3452,7 @@ const SectorPage = () => {
 
 
 function App() {
+  useGA4();
   return (
     <div className="App">
       <BrowserRouter>

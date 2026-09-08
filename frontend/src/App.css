@@ -3925,6 +3925,34 @@ iframe.goog-te-banner-frame { display: none !important; }
 .admin-item-actions button:hover, .admin-item-actions .btn-link:hover { background: #e2e8f0; }
 .admin-item-actions .danger { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
 .admin-item-actions .danger:hover { background: #fee2e2; }
+.admin-item.is-hidden-sector { opacity: 0.7; background: #fefce8; }
+.admin-item.is-trashed { opacity: 0.55; background: #fef2f2; }
+.admin-filters .admin-primary,
+.admin-modal-footer .admin-primary {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: #fff;
+  border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; cursor: pointer;
+}
+.admin-filters .admin-primary { margin-left: auto; }
+
+/* Sector editor modal */
+.admin-sector-modal { max-width: 720px; max-height: 88vh; overflow-y: auto; }
+.admin-sector-modal h2 { margin: 0 0 18px; }
+.admin-sector-modal .admin-modal-full { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #334155; margin-top: 12px; }
+.admin-sector-modal input[type="text"],
+.admin-sector-modal textarea {
+  padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #fff; font-family: inherit;
+}
+.admin-sector-modal input:focus, .admin-sector-modal textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+.admin-modal-sub { margin-top: 18px; padding-top: 14px; border-top: 1px solid #e2e8f0; }
+.admin-modal-sub h4 { margin: 0 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; }
+.admin-list-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.admin-list-row input { flex: 1; }
+.admin-list-row .danger { padding: 0 12px; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; border-radius: 8px; cursor: pointer; font-weight: 700; }
+.admin-modal-sub > button {
+  margin-top: 4px; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer;
+}
+.admin-modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; padding-top: 18px; border-top: 1px solid #e2e8f0; }
+.admin-modal-footer button:first-child { background: #f1f5f9; border: 1px solid #e2e8f0; padding: 10px 18px; border-radius: 10px; cursor: pointer; font-weight: 600; }
 
 .admin-tag { background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
 .admin-tag-soft { background: #f1f5f9; color: #475569; }
@@ -4497,6 +4525,43 @@ body:has(.admin-login-page) #google_translate_wrapper { display: none !important
 .sector-final-cta .hero-btn.secondary { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.3); }
 .sector-final-cta .hero-btn.secondary:hover { background: rgba(255,255,255,0.18); }
 
+/* ===== WhatsApp floating action button ===== */
+.whatsapp-fab {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 50;
+  width: 60px; height: 60px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #25d366;
+  color: #fff;
+  border-radius: 50%;
+  box-shadow: 0 8px 24px rgba(37, 211, 102, 0.42), 0 0 0 0 rgba(37, 211, 102, 0.4);
+  text-decoration: none;
+  animation: whatsapp-pulse 2.4s ease-in-out infinite;
+  transition: transform 220ms ease, box-shadow 220ms ease, background 220ms ease;
+}
+.whatsapp-fab:hover {
+  transform: scale(1.08);
+  background: #128c7e;
+  box-shadow: 0 12px 32px rgba(18, 140, 126, 0.55);
+}
+.whatsapp-fab:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+@keyframes whatsapp-pulse {
+  0%   { box-shadow: 0 8px 24px rgba(37,211,102,0.42), 0 0 0 0 rgba(37,211,102,0.55); }
+  70%  { box-shadow: 0 8px 24px rgba(37,211,102,0.42), 0 0 0 18px rgba(37,211,102,0);   }
+  100% { box-shadow: 0 8px 24px rgba(37,211,102,0.42), 0 0 0 0 rgba(37,211,102,0);      }
+}
+@media (max-width: 600px) {
+  .whatsapp-fab { bottom: 16px; right: 16px; width: 54px; height: 54px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .whatsapp-fab { animation: none; }
+}
+
 /* ===== Bundled product (CRM incluido) ===== */
 .sector-bundled {
   background: #fff; border: 1px solid #e2e8f0; border-radius: 24px;
@@ -4584,3 +4649,5 @@ body:has(.admin-login-page) #google_translate_wrapper { display: none !important
   background: #eff6ff;
 }
 .sector-hero .hero-btn { display: inline-flex; align-items: center; }
+/* Ensure <a> tags with hero-btn class render identically to <button> */
+a.hero-btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }

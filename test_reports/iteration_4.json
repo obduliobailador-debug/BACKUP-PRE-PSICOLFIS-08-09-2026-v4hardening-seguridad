@@ -1,0 +1,35 @@
+{
+  "summary": "Retest of the /api/sitemap.xml fix. All 29 pytest backend tests PASS (2 previously failing sitemap tests now pass after updating them to hit /api/sitemap.xml). Verified public URL https://repo-modify-zone.preview.emergentagent.com/api/sitemap.xml returns HTTP 200 with content-type application/xml, cache-control no-store, and body includes the 4 static routes (/, /agentes, /soluciones, /legal) plus one <loc> per active sector (inmobiliarias, clinicas-dentales, salones-belleza) using PUBLIC_BASE_URL=https://psicolfis.net. Static file /app/frontend/public/sitemap.xml confirmed DELETED. robots.txt line 8 declares 'Sitemap: https://psicolfis.net/api/sitemap.xml'. Dual decorator @app.get('/sitemap.xml') + @api_router.get('/sitemap.xml') at server.py:569-570 is in place. Hide-then-sitemap flow is covered indirectly by TestVisibility (hide removes sector from public /api/sectors) — sitemap uses the same DB query so it will reflect changes within one request (no cache confirmed by no-store header). Full regression from iteration_3 still passing (admin sectors CRUD, soft-delete/restore/permanent, visibility, auth guard, sector list/detail, admin login).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_sectors_and_sitemap.py",
+    "/app/backend/tests/test_sectors_and_regression.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "App.js is still ~3475 lines — recommend splitting into pages/components (unchanged from iter_3, not a blocker).",
+    "Consider adding an explicit test that hides a sector and asserts its <loc> is removed from /api/sitemap.xml within the same test to lock the contract."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_admin_sectors_and_sitemap.py"
+  ],
+  "success_rate": {
+    "backend": "100% (29/29 pytest)",
+    "frontend": "not tested (skipped per request)"
+  },
+  "test_credentials": "Admin: obdulio@psicolfis.net / Clau49006@.",
+  "seed_data_creation": "Temporary test-sector / test-sector-renamed created and cleaned up by fixture; 3 original sectors verified active and unhidden at teardown.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Sitemap fix confirmed working via public /api/sitemap.xml. If future work touches the sectors CMS, re-run pytest /app/backend/tests/ — full suite is 29 tests. robots.txt now points to /api/sitemap.xml.",
+  "rca of the issue": "Previous RCA (iter_3) was correct: K8s ingress only routes /api/* to backend. Fix applied: (a) dual-decorated the endpoint on both `app` and `api_router` so /api/sitemap.xml is reachable, (b) deleted the stale static /app/frontend/public/sitemap.xml, (c) updated robots.txt to declare the /api/sitemap.xml URL. Verified via curl -D headers: HTTP/2 200, content-type application/xml, cache-control no-store, body contains all 4 static routes + 3 sector routes with PUBLIC_BASE_URL prefix."
+}
