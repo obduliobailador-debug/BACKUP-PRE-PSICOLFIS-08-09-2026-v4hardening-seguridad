@@ -87,14 +87,15 @@ const usePageSeo = ({ title, description, canonicalPath, noindex = false }) => {
       setMetaTag('meta[name="twitter:title"]', 'content', title);
     }
     if (canonicalPath) {
+      const baseUrl = process.env.REACT_APP_PUBLIC_BASE_URL || 'https://psicolfis.net';
       let link = document.head.querySelector('link[rel="canonical"]');
       if (!link) {
         link = document.createElement('link');
         link.setAttribute('rel', 'canonical');
         document.head.appendChild(link);
       }
-      link.setAttribute('href', `https://psicolfis.net${canonicalPath}`);
-      setMetaTag('meta[property="og:url"]', 'content', `https://psicolfis.net${canonicalPath}`);
+      link.setAttribute('href', `${baseUrl}${canonicalPath}`);
+      setMetaTag('meta[property="og:url"]', 'content', `${baseUrl}${canonicalPath}`);
     }
     setMetaTag(
       'meta[name="robots"]',
