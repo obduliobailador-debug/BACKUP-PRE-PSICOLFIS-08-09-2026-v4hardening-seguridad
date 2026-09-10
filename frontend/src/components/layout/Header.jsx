@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Container } from "./Container";
 import { MainNavigation } from "@/components/navigation/MainNavigation";
+import { MobileNavigation } from "@/components/navigation/MobileNavigation";
 import { brand, primaryCta } from "@/components/navigation/navigationConfig";
 
 /**
@@ -19,11 +20,10 @@ import { brand, primaryCta } from "@/components/navigation/navigationConfig";
  * is hidden and a slot is reserved for MobileNavigation (BLOQUE 5).
  *
  * Props:
- *   mobileTrigger - ReactNode rendered in the <xl slot (BLOQUE 5 will pass the
- *                   hamburger/trigger here). Kept as a simple slot, no excess
- *                   abstraction. The mobile menu itself is NOT built here.
+ *   mobileTrigger - optional override for the <xl slot. Defaults to the
+ *                   BLOQUE 5 MobileNavigation (hamburger + panel).
  */
-export function Header({ className, mobileTrigger = null }) {
+export function Header({ className, mobileTrigger }) {
   return (
     <header
       className={cn("w-full border-b border-border bg-background", className)}
@@ -52,8 +52,8 @@ export function Header({ className, mobileTrigger = null }) {
               <Link to={primaryCta.href}>{primaryCta.label}</Link>
             </Button>
 
-            {/* Integration point for MobileNavigation (BLOQUE 5). */}
-            <div className="xl:hidden">{mobileTrigger}</div>
+            {/* Mobile/tablet navigation (< xl): BLOQUE 5 MobileNavigation. */}
+            <div className="xl:hidden">{mobileTrigger ?? <MobileNavigation />}</div>
           </div>
         </div>
       </Container>
