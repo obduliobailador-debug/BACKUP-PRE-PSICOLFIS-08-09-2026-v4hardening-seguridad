@@ -12,8 +12,20 @@ module.exports = {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
+  		fontFamily: {
+  			sans: ['Inter Variable', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+  			heading: ['Manrope Variable', 'Manrope', 'Inter Variable', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif']
+  		},
+  		fontSize: {
+  			'h1': ['clamp(2.375rem, 2rem + 2.5vw, 4rem)', { lineHeight: '1.1', letterSpacing: '-0.02em', fontWeight: '700' }],
+  			'h2': ['clamp(1.875rem, 1.6rem + 1.6vw, 2.875rem)', { lineHeight: '1.15', letterSpacing: '-0.01em', fontWeight: '700' }],
+  			'h3': ['clamp(1.375rem, 1.2rem + 0.9vw, 1.875rem)', { lineHeight: '1.25', fontWeight: '600' }],
+  			'body-lg': ['clamp(1.0625rem, 1rem + 0.15vw, 1.125rem)', { lineHeight: '1.6' }],
+  			'body-sm': ['clamp(0.9375rem, 0.9rem + 0.1vw, 1rem)', { lineHeight: '1.5' }]
+  		},
   		colors: {
   			background: 'hsl(var(--background))',
+  			'background-warm': 'hsl(var(--background-warm))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
   				DEFAULT: 'hsl(var(--card))',

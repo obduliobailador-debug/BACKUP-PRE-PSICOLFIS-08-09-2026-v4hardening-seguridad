@@ -4,10 +4,7 @@
 
 body {
     margin: 0;
-    font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-        sans-serif;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -19,31 +16,42 @@ code {
 
 @layer base {
     :root {
-        --background: 0 0% 100%;
-        --foreground: 0 0% 3.9%;
+        /* PSICOLFISNET 2.0 — semantic design tokens (BLOQUE 2)
+           HSL values map to the approved brand palette:
+           primary #173B4F · secondary #3F746D · background #FCFBF8
+           background-warm #F2EEE6 · foreground #1B2429
+           muted-foreground ~#5F6C72 · border/input ~#DCE2E3 */
+        --background: 45 40% 98%;        /* #FCFBF8 */
+        --background-warm: 40 32% 93%;   /* #F2EEE6 */
+        --foreground: 201 21% 13%;       /* #1B2429 */
         --card: 0 0% 100%;
-        --card-foreground: 0 0% 3.9%;
+        --card-foreground: 201 21% 13%;
         --popover: 0 0% 100%;
-        --popover-foreground: 0 0% 3.9%;
-        --primary: 0 0% 9%;
-        --primary-foreground: 0 0% 98%;
-        --secondary: 0 0% 96.1%;
-        --secondary-foreground: 0 0% 9%;
-        --muted: 0 0% 96.1%;
-        --muted-foreground: 0 0% 45.1%;
-        --accent: 0 0% 96.1%;
-        --accent-foreground: 0 0% 9%;
+        --popover-foreground: 201 21% 13%;
+        --primary: 201 55% 20%;          /* #173B4F */
+        --primary-foreground: 45 40% 98%;
+        --secondary: 172 30% 35%;        /* #3F746D */
+        --secondary-foreground: 45 40% 98%;
+        --muted: 40 32% 92%;             /* warm surface (#F2EEE6) */
+        --muted-foreground: 199 9% 41%;  /* ~#5F6C72 */
+        --accent: 40 32% 92%;            /* warm surface */
+        --accent-foreground: 201 21% 13%;
         --destructive: 0 84.2% 60.2%;
         --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 89.8%;
-        --input: 0 0% 89.8%;
-        --ring: 0 0% 3.9%;
+        --border: 189 11% 88%;           /* #DCE2E3 */
+        --input: 189 11% 88%;            /* #DCE2E3 */
+        --ring: 201 55% 20%;             /* primary — visible focus */
         --chart-1: 12 76% 61%;
         --chart-2: 173 58% 39%;
         --chart-3: 197 37% 24%;
         --chart-4: 43 74% 66%;
         --chart-5: 27 87% 67%;
-        --radius: 0.5rem;
+        --radius: 0.875rem;              /* 14px · lg 14 / md 12 / sm 10 */
+        /* Typography stacks — Manrope (headings/brand) + Inter (body/UI)
+           with robust system fallbacks. Actual web-font loading is a
+           PENDING decision (see BLOQUE 2 report, section 9). */
+        --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-heading: "Manrope Variable", "Manrope", "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     .dark {
         --background: 0 0% 3.9%;
@@ -79,6 +87,27 @@ code {
     }
     body {
         @apply bg-background text-foreground;
+    }
+
+    /* Accessibility — clearly perceptible keyboard focus.
+       Utilities (shadcn focus-visible:*) live in a later layer and
+       override this, so components keep their own focus styling. */
+    :focus-visible {
+        outline: 2px solid hsl(var(--ring));
+        outline-offset: 2px;
+    }
+}
+
+/* Motion — respect user preference for reduced motion.
+   Keeps transitions discreet (150–300ms) everywhere else. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 }
 
