@@ -3790,86 +3790,6 @@ body {
   transform: translateY(-2px);
 }
 
-/* ====== Google Translate widget — top-right pill, brand-aligned ====== */
-#google_translate_wrapper {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  z-index: 9999;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px 8px 12px;
-  background: linear-gradient(135deg, rgba(59,130,246,0.95) 0%, rgba(139,92,246,0.95) 100%);
-  border-radius: 999px;
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-#google_translate_wrapper:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.45);
-}
-#google_translate_wrapper .gt-icon {
-  font-size: 18px;
-  line-height: 1;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
-}
-#google_translate_element { display: inline-block; }
-#google_translate_element .goog-te-gadget {
-  font-family: inherit !important;
-  font-size: 0 !important; /* hide "Powered by" caption */
-  color: transparent !important;
-  margin: 0 !important;
-}
-#google_translate_element .goog-te-gadget-simple {
-  background: transparent !important;
-  border: none !important;
-  padding: 0 !important;
-  font-size: 14px !important;
-  line-height: 1.2 !important;
-}
-#google_translate_element .goog-te-gadget-simple > span { border: none !important; }
-#google_translate_element .goog-te-gadget-simple span,
-#google_translate_element .goog-te-gadget-simple a {
-  color: #ffffff !important;
-  text-decoration: none !important;
-}
-#google_translate_element .goog-te-gadget-simple .goog-te-menu-value {
-  color: #ffffff !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.02em;
-  font-size: 14px !important;
-}
-#google_translate_element .goog-te-gadget-simple .goog-te-menu-value span {
-  color: #ffffff !important;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.2);
-}
-#google_translate_element img { display: none !important; }
-
-/* Kill Google's default top banner that pushes the page down */
-body { top: 0 !important; }
-.goog-te-banner-frame.skiptranslate,
-iframe.goog-te-banner-frame { display: none !important; }
-.goog-tooltip, .goog-tooltip:hover { display: none !important; }
-.goog-text-highlight { background: none !important; box-shadow: none !important; }
-
-/* Mobile */
-@media (max-width: 640px) {
-  #google_translate_wrapper {
-    top: 10px;
-    right: 10px;
-    padding: 6px 12px 6px 10px;
-    gap: 6px;
-  }
-  #google_translate_wrapper .gt-icon { font-size: 15px; }
-  #google_translate_element .goog-te-gadget-simple,
-  #google_translate_element .goog-te-gadget-simple .goog-te-menu-value {
-    font-size: 12.5px !important;
-  }
-}
-
 /* ====== /admin — back-office ====== */
 .admin-shell { min-height: 100vh; background: #f6f7fb; color: #0f172a; }
 .admin-header {
@@ -3979,11 +3899,6 @@ iframe.goog-te-banner-frame { display: none !important; }
 }
 .admin-login-card button[type="submit"]:disabled { opacity: 0.6; cursor: not-allowed; }
 .admin-login-error { background: #fef2f2; color: #b91c1c; padding: 10px 14px; border-radius: 8px; font-size: 13px; border: 1px solid #fecaca; }
-
-/* Hide Google Translate widget on /admin (it would clash with header) */
-body:has(.admin-shell) #google_translate_wrapper,
-body:has(.admin-login-page) #google_translate_wrapper { display: none !important; }
-
 
 /* Admin: Regalar acceso (gift access) */
 .admin-gift-form {
