@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { API, AGENT_STRIPE_URLS, AGENT_STRIPE_URLS_FULL } from "../api";
 import { useScrollReveal } from "../hooks/useScrollReveal";
+import { useModalA11y } from "../hooks/useModalA11y";
 import { usePageSeo } from "../lib/seo";
 
 import { CookieBanner } from "./home/CookieBanner";
@@ -166,6 +167,9 @@ export const Home = () => {
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
+  const budgetModalRef = useModalA11y({ isOpen: showBudgetForm, onClose: () => setShowBudgetForm(false) });
+  const reviewModalRef = useModalA11y({ isOpen: showReviewForm, onClose: () => setShowReviewForm(false) });
+
   const resetBudgetForm = () => {
     setBudgetForm({
       nombre: '', email: '', telefono: '', plan: '',
@@ -285,11 +289,11 @@ export const Home = () => {
         {/* Budget request modal */}
         {showBudgetForm && (
           <div className="budget-modal-overlay" onClick={() => setShowBudgetForm(false)}>
-            <div className="budget-modal" onClick={(e) => e.stopPropagation()}>
-              <button className="budget-modal-close" onClick={() => setShowBudgetForm(false)}>✕</button>
+            <div className="budget-modal" onClick={(e) => e.stopPropagation()} ref={budgetModalRef} role="dialog" aria-modal="true" aria-labelledby="budget-modal-title" tabIndex={-1}>
+              <button className="budget-modal-close" onClick={() => setShowBudgetForm(false)} aria-label="Cerrar">✕</button>
               {!formSubmitted ? (
                 <>
-                  <h2>📋 Solicitar Presupuesto</h2>
+                  <h2 id="budget-modal-title">📋 Solicitar Presupuesto</h2>
                   <p className="budget-plan-selected">Plan seleccionado: <strong>{budgetForm.plan}</strong></p>
                   <form onSubmit={handleBudgetSubmit}>
                     <div className="form-group">
@@ -411,7 +415,7 @@ export const Home = () => {
               ) : (
                 <div className="budget-success">
                   <div className="success-icon">✅</div>
-                  <h2>¡Solicitud Enviada!</h2>
+                  <h2 id="budget-modal-title">¡Solicitud Enviada!</h2>
                   <p>Nos pondremos en contacto contigo en breve.</p>
                 </div>
               )}
@@ -428,11 +432,11 @@ export const Home = () => {
         {/* Review modal */}
         {showReviewForm && (
           <div className="budget-modal-overlay" onClick={() => setShowReviewForm(false)}>
-            <div className="budget-modal" onClick={(e) => e.stopPropagation()}>
-              <button className="budget-modal-close" onClick={() => setShowReviewForm(false)}>✕</button>
+            <div className="budget-modal" onClick={(e) => e.stopPropagation()} ref={reviewModalRef} role="dialog" aria-modal="true" aria-labelledby="review-modal-title" tabIndex={-1}>
+              <button className="budget-modal-close" onClick={() => setShowReviewForm(false)} aria-label="Cerrar">✕</button>
               {!reviewSubmitted ? (
                 <>
-                  <h2>✍️ Deja tu reseña</h2>
+                  <h2 id="review-modal-title">✍️ Deja tu reseña</h2>
                   <p className="budget-plan-selected">Tu opinión nos ayuda a seguir mejorando</p>
                   <form onSubmit={handleReviewSubmit}>
                     <div className="form-group">
@@ -531,7 +535,7 @@ export const Home = () => {
               ) : (
                 <div className="budget-success">
                   <div className="success-icon">🌟</div>
-                  <h2>¡Gracias por tu reseña!</h2>
+                  <h2 id="review-modal-title">¡Gracias por tu reseña!</h2>
                   <p>Ya está publicada en la web.</p>
                 </div>
               )}

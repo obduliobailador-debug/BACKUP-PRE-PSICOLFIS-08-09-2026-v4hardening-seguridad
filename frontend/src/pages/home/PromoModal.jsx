@@ -1,14 +1,16 @@
 import { agents } from "../../data/agents";
+import { useModalA11y } from "../../hooks/useModalA11y";
 
 /**
  * Countdown pop-up shown on first visit with the 3 agents' cards.
  * All state (`showModal`, `timeLeft`, `loading`) is owned by Home.jsx.
  */
 export const PromoModal = ({ show, onClose, timeLeft, formatTime, handlePurchase, loading }) => {
+  const modalRef = useModalA11y({ isOpen: show, onClose });
   if (!show) return null;
   return (
     <div className="modal-overlay" data-testid="promo-modal">
-      <div className="modal-content">
+      <div className="modal-content" ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="promo-modal-title" tabIndex={-1}>
         <button className="modal-close" onClick={onClose} aria-label="Cerrar">
           ✕
         </button>
@@ -21,7 +23,7 @@ export const PromoModal = ({ show, onClose, timeLeft, formatTime, handlePurchase
         <div className="modal-body">
           <div className="promo-content">
             <div className="promo-icon">🤖</div>
-            <h1 className="promo-title">CONOCE NUESTROS AGENTES</h1>
+            <h1 className="promo-title" id="promo-modal-title">CONOCE NUESTROS AGENTES</h1>
             <div className="promo-icon">🤖</div>
           </div>
           <p className="promo-subtitle">Inteligencia artificial que piensa como tú</p>
