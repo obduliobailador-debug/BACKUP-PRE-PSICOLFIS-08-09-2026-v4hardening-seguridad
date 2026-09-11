@@ -297,8 +297,9 @@ export const Home = () => {
                   <p className="budget-plan-selected">Plan seleccionado: <strong>{budgetForm.plan}</strong></p>
                   <form onSubmit={handleBudgetSubmit}>
                     <div className="form-group">
-                      <label>Nombre completo *</label>
+                      <label htmlFor="budget-nombre">Nombre completo *</label>
                       <input
+                        id="budget-nombre"
                         type="text"
                         required
                         value={budgetForm.nombre}
@@ -307,8 +308,9 @@ export const Home = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Email *</label>
+                      <label htmlFor="budget-email">Email *</label>
                       <input
+                        id="budget-email"
                         type="email"
                         required
                         value={budgetForm.email}
@@ -317,8 +319,9 @@ export const Home = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Teléfono móvil (opcional)</label>
+                      <label htmlFor="budget-telefono">Teléfono móvil (opcional)</label>
                       <input
+                        id="budget-telefono"
                         type="tel"
                         value={budgetForm.telefono}
                         onChange={(e) => setBudgetForm({...budgetForm, telefono: e.target.value})}
@@ -327,8 +330,9 @@ export const Home = () => {
                     </div>
 
                     <div className="form-group">
-                      <label>¿Te interesa algún agente en particular? (opcional)</label>
+                      <label htmlFor="budget-agente">¿Te interesa algún agente en particular? (opcional)</label>
                       <select
+                        id="budget-agente"
                         value={budgetForm.agente}
                         onChange={(e) => setBudgetForm({...budgetForm, agente: e.target.value})}
                         data-testid="budget-agent-select"
@@ -370,8 +374,8 @@ export const Home = () => {
                     </div>
 
                     <div className="form-group captcha-group" data-testid="captcha-group">
-                      <label>
-                        Verificación de seguridad *
+                      <div className="captcha-label-row">
+                        <label htmlFor="budget-captcha">Verificación de seguridad *</label>
                         <button
                           type="button"
                           className="captcha-refresh"
@@ -381,12 +385,14 @@ export const Home = () => {
                         >
                           ↻
                         </button>
-                      </label>
+                      </div>
                       <div className="captcha-row">
-                        <span className="captcha-question" data-testid="captcha-question">
+                        <span className="captcha-question" id="budget-captcha-question" data-testid="captcha-question">
                           {captchaLoading ? 'Cargando…' : (captcha.question || 'No disponible')}
                         </span>
                         <input
+                          id="budget-captcha"
+                          aria-describedby="budget-captcha-question"
                           type="text"
                           inputMode="numeric"
                           required
@@ -407,7 +413,7 @@ export const Home = () => {
                       {formSubmitting ? 'Enviando...' : 'Enviar Solicitud →'}
                     </button>
                     {formError && (
-                      <p className="budget-error" data-testid="budget-error">{formError}</p>
+                      <p className="budget-error" role="alert" data-testid="budget-error">{formError}</p>
                     )}
                   </form>
                   <p className="budget-notice">Una vez hecha la reserva, nos pondremos en contacto con usted para concretar la personalización. Mínimo plazo de entrega: 5 días laborables.</p>
@@ -440,8 +446,9 @@ export const Home = () => {
                   <p className="budget-plan-selected">Tu opinión nos ayuda a seguir mejorando</p>
                   <form onSubmit={handleReviewSubmit}>
                     <div className="form-group">
-                      <label>Tu nombre *</label>
+                      <label htmlFor="review-author">Tu nombre *</label>
                       <input
+                        id="review-author"
                         type="text"
                         required
                         maxLength={80}
@@ -452,8 +459,9 @@ export const Home = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>¿A qué te dedicas? (opcional)</label>
+                      <label htmlFor="review-role">¿A qué te dedicas? (opcional)</label>
                       <input
+                        id="review-role"
                         type="text"
                         maxLength={80}
                         value={reviewForm.role}
@@ -463,8 +471,8 @@ export const Home = () => {
                       />
                     </div>
                     <div className="form-group">
-                      <label>Valoración *</label>
-                      <div className="rating-input" data-testid="review-rating">
+                      <label id="review-rating-label">Valoración *</label>
+                      <div className="rating-input" role="group" aria-labelledby="review-rating-label" data-testid="review-rating">
                         {[1,2,3,4,5].map(n => (
                           <button
                             type="button"
@@ -480,8 +488,9 @@ export const Home = () => {
                       </div>
                     </div>
                     <div className="form-group">
-                      <label>Tu reseña * (mín. 20 caracteres)</label>
+                      <label htmlFor="review-text">Tu reseña * (mín. 20 caracteres)</label>
                       <textarea
+                        id="review-text"
                         required
                         rows={5}
                         maxLength={1000}
@@ -501,13 +510,15 @@ export const Home = () => {
                     </div>
 
                     <div className="form-group captcha-group">
-                      <label>
-                        Verificación de seguridad *
+                      <div className="captcha-label-row">
+                        <label htmlFor="review-captcha">Verificación de seguridad *</label>
                         <button type="button" className="captcha-refresh" onClick={fetchReviewCaptcha} aria-label="Cambiar pregunta">↻</button>
-                      </label>
+                      </div>
                       <div className="captcha-row">
-                        <span className="captcha-question">{reviewCaptcha.question || 'Cargando…'}</span>
+                        <span className="captcha-question" id="review-captcha-question">{reviewCaptcha.question || 'Cargando…'}</span>
                         <input
+                          id="review-captcha"
+                          aria-describedby="review-captcha-question"
                           type="text"
                           inputMode="numeric"
                           required
@@ -528,7 +539,7 @@ export const Home = () => {
                       {reviewSubmitting ? 'Enviando...' : 'Enviar reseña →'}
                     </button>
                     {reviewError && (
-                      <p className="budget-error">{reviewError}</p>
+                      <p className="budget-error" role="alert">{reviewError}</p>
                     )}
                   </form>
                 </>

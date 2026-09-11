@@ -2726,6 +2726,13 @@ body {
   gap: 10px;
 }
 
+.captcha-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .captcha-refresh {
   background: transparent;
   border: 1px solid #334155;
