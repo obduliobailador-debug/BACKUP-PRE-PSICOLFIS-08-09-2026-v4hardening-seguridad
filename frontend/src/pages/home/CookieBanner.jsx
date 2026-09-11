@@ -28,7 +28,7 @@ export const CookieBanner = () => {
     <div className="cookie-banner">
       <div className="cookie-content">
         <div className="cookie-text">
-          <h4>🍪 Uso de Cookies</h4>
+          <h4><span aria-hidden="true">🍪</span> Uso de Cookies</h4>
           <p>
             Utilizamos cookies para mejorar tu experiencia de navegación y analizar el uso de nuestro sitio web.
             Al continuar navegando, aceptas nuestra política de cookies.
@@ -36,10 +36,10 @@ export const CookieBanner = () => {
         </div>
         <div className="cookie-buttons">
           <button className="cookie-btn accept" onClick={accept}>
-            ✅ Aceptar todas
+            <span aria-hidden="true">✅</span> Aceptar todas
           </button>
           <button className="cookie-btn reject" onClick={reject}>
-            ❌ Rechazar
+            <span aria-hidden="true">❌</span> Rechazar
           </button>
           <a href="/legal#cookies" className="cookie-link">
             Más información

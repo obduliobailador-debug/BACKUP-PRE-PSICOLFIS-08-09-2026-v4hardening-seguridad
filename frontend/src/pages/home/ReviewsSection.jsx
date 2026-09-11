@@ -55,7 +55,7 @@ export const ReviewsSection = ({ reviews, reviewsStats, openReviewForm }) => (
                 onClick={openReviewForm}
                 data-testid="leave-review-btn"
               >
-                ✍️ Dejar mi reseña
+                <span aria-hidden="true">✍️</span> Dejar mi reseña
               </button>
             </div>
           </div>

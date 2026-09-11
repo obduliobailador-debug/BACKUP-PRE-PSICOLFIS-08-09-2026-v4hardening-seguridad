@@ -293,7 +293,7 @@ export const Home = () => {
               <button className="budget-modal-close" onClick={() => setShowBudgetForm(false)} aria-label="Cerrar">✕</button>
               {!formSubmitted ? (
                 <>
-                  <h2 id="budget-modal-title">📋 Solicitar Presupuesto</h2>
+                  <h2 id="budget-modal-title"><span aria-hidden="true">📋</span> Solicitar Presupuesto</h2>
                   <p className="budget-plan-selected">Plan seleccionado: <strong>{budgetForm.plan}</strong></p>
                   <form onSubmit={handleBudgetSubmit}>
                     <div className="form-group">
@@ -442,7 +442,7 @@ export const Home = () => {
               <button className="budget-modal-close" onClick={() => setShowReviewForm(false)} aria-label="Cerrar">✕</button>
               {!reviewSubmitted ? (
                 <>
-                  <h2 id="review-modal-title">✍️ Deja tu reseña</h2>
+                  <h2 id="review-modal-title"><span aria-hidden="true">✍️</span> Deja tu reseña</h2>
                   <p className="budget-plan-selected">Tu opinión nos ayuda a seguir mejorando</p>
                   <form onSubmit={handleReviewSubmit}>
                     <div className="form-group">

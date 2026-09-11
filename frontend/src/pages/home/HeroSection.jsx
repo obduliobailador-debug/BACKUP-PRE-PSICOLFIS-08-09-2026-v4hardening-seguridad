@@ -34,10 +34,10 @@ export const HeroSection = () => (
 
             <div className="hero-buttons">
               <button className="hero-btn primary" onClick={() => document.getElementById('agentes').scrollIntoView({behavior: 'smooth'})}>
-                🤖 Descubre los Super Agentes →
+                <span aria-hidden="true">🤖</span> Descubre los Super Agentes <span aria-hidden="true">→</span>
               </button>
               <button className="hero-btn secondary" onClick={() => document.getElementById('precios').scrollIntoView({behavior: 'smooth'})}>
-                💰 Ver Precios →
+                <span aria-hidden="true">💰</span> Ver Precios <span aria-hidden="true">→</span>
               </button>
             </div>
 
@@ -46,7 +46,7 @@ export const HeroSection = () => (
             </p>
 
             <button className="scroll-down" onClick={() => window.scrollTo({top: window.innerHeight, behavior: 'smooth'})}>
-              Descubre más ↓
+              Descubre más <span aria-hidden="true">↓</span>
             </button>
           </div>
         </section>

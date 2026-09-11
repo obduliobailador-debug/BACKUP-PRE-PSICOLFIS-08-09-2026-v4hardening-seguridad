@@ -21,7 +21,7 @@ export const SectorsSection = () => (
                 </div>
                 <h3>Inmobiliarias</h3>
                 <p>Cualifica leads y agenda visitas mientras atiendes a tus clientes actuales.</p>
-                <span className="sector-link">Ver solución →</span>
+                <span className="sector-link">Ver solución <span aria-hidden="true">→</span></span>
               </a>
 
               <a className="sector-card reveal reveal-up" href="/soluciones/clinicas-dentales" data-testid="home-sector-dental">
@@ -30,7 +30,7 @@ export const SectorsSection = () => (
                 </div>
                 <h3>Clínicas dentales</h3>
                 <p>Reduce cancelaciones, recupera pacientes inactivos y libera la recepción.</p>
-                <span className="sector-link">Ver solución →</span>
+                <span className="sector-link">Ver solución <span aria-hidden="true">→</span></span>
               </a>
 
               <a className="sector-card reveal reveal-up" href="/soluciones/salones-belleza" data-testid="home-sector-beauty">
@@ -39,7 +39,7 @@ export const SectorsSection = () => (
                 </div>
                 <h3>Salones de belleza</h3>
                 <p>Reservas 24/7 por WhatsApp, upsell automático y clientas que vuelven solas.</p>
-                <span className="sector-link">Ver solución →</span>
+                <span className="sector-link">Ver solución <span aria-hidden="true">→</span></span>
               </a>
 
               <a className="sector-card sector-card-wish reveal reveal-up" href="/?demo=Tu%20sector" data-testid="home-sector-wish">
@@ -48,13 +48,13 @@ export const SectorsSection = () => (
                 </div>
                 <h3>Tu sector aquí</h3>
                 <p>¿No ves el tuyo? Dinos a qué te dedicas y diseñamos un agente IA a medida.</p>
-                <span className="sector-link">Proponer mi sector →</span>
+                <span className="sector-link">Proponer mi sector <span aria-hidden="true">→</span></span>
               </a>
             </div>
 
             <div className="sectors-cta reveal">
               <a href="/soluciones" className="hero-btn primary" data-testid="home-sectors-all">
-                Ver todas las soluciones por sector →
+                Ver todas las soluciones por sector <span aria-hidden="true">→</span>
               </a>
             </div>
           </div>

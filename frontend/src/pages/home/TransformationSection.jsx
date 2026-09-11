@@ -20,7 +20,7 @@ export const TransformationSection = () => (
             
             <div className="transformation-comparison">
               <div className="comparison-card before reveal reveal-left">
-                <h3>❌ Antes (Sin IA)</h3>
+                <h3><span aria-hidden="true">❌</span> Antes (Sin IA)</h3>
                 <ul>
                   <li>• Tareas repetitivas consumen tu día</li>
                   <li>• Respuestas manuales a cada cliente</li>
@@ -31,7 +31,7 @@ export const TransformationSection = () => (
               </div>
               
               <div className="comparison-card after reveal reveal-right">
-                <h3>✅ Después (Con IA)</h3>
+                <h3><span aria-hidden="true">✅</span> Después (Con IA)</h3>
                 <ul>
                   <li>✓ Automatización inteligente 24/7</li>
                   <li>✓ Respuestas instantáneas con tu tono</li>

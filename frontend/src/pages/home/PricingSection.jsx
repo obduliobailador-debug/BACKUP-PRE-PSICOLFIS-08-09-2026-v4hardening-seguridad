@@ -12,7 +12,7 @@ export const PricingSection = ({ openBudgetForm }) => (
             <p className="section-subtitle">Comienza hoy y multiplica tu productividad con nuestros Super Agentes de IA</p>
             
             <div className="pricing-notice-clean pricing-notice-animated">
-              <h3>📋 Solicita tu Presupuesto Personalizado</h3>
+              <h3><span aria-hidden="true">📋</span> Solicita tu Presupuesto Personalizado</h3>
               <p>Estos precios son orientativos. Contacta con nosotros para recibir un presupuesto detallado adaptado a tus necesidades específicas.</p>
               <p className="pricing-notice-extra">Una vez hecha la reserva, nos pondremos en contacto con usted para concretar la personalización. <strong>Mínimo plazo de entrega: 5 días laborables.</strong></p>
             </div>
@@ -30,7 +30,7 @@ export const PricingSection = ({ openBudgetForm }) => (
                   <li>✓ Documentación completa</li>
                   <li>✓ Demostraciones incluidas</li>
                 </ul>
-                <button className="plan-button-dark" onClick={() => openBudgetForm('Starter Pack - 99,00€')}>📧 Solicitar Presupuesto</button>
+                <button className="plan-button-dark" onClick={() => openBudgetForm('Starter Pack - 99,00€')}><span aria-hidden="true">📧</span> Solicitar Presupuesto</button>
               </div>
               
               <div className="pricing-card-white featured reveal reveal-up" style={{transitionDelay: '120ms'}}>
@@ -47,7 +47,7 @@ export const PricingSection = ({ openBudgetForm }) => (
                   <li>✓ Guía por WhatsApp o app de pantalla compartida</li>
                   <li>✓ Actualización gratuita el PRIMER mes</li>
                 </ul>
-                <button className="plan-button-blue" onClick={() => openBudgetForm('Professional Pack - 249,00€')}>📧 Solicitar Presupuesto</button>
+                <button className="plan-button-blue" onClick={() => openBudgetForm('Professional Pack - 249,00€')}><span aria-hidden="true">📧</span> Solicitar Presupuesto</button>
               </div>
               
               <div className="pricing-card-white reveal reveal-up" style={{transitionDelay: '240ms'}}>
@@ -61,7 +61,7 @@ export const PricingSection = ({ openBudgetForm }) => (
                   <li>✓ <strong>Opcional - Extra WhatsApp/voz:</strong> +400€ setup (voz corporativa personalizada, con consentimiento y contrato)</li>
                   <li>✓ <strong>Caso de servicio mensual:</strong> Mínimo 3 meses de servicio para asegurar completo el chequeo</li>
                 </ul>
-                <button className="plan-button-dark" onClick={() => openBudgetForm('Enterprise Pack - 2.300€')}>📧 Solicitar Presupuesto</button>
+                <button className="plan-button-dark" onClick={() => openBudgetForm('Enterprise Pack - 2.300€')}><span aria-hidden="true">📧</span> Solicitar Presupuesto</button>
               </div>
             </div>
 

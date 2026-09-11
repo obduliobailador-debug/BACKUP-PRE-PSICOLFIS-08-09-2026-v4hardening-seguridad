@@ -9,7 +9,7 @@ export const SuperAgentsSection = () => (
             <p className="section-subtitle">Demostración de agentes que interactúan entre ellos y trabajan de forma coordinada para multiplicar tu productividad.</p>
             
             <div className="agents-interaction">
-              <h3 className="interaction-title">🔄 Cómo Interactúan los Agentes</h3>
+              <h3 className="interaction-title"><span aria-hidden="true">🔄</span> Cómo Interactúan los Agentes</h3>
               
               <div className="agents-flow">
                 <div className="agent-box">

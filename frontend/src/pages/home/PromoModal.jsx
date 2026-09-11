@@ -23,7 +23,7 @@ export const PromoModal = ({ show, onClose, timeLeft, formatTime, handlePurchase
         <div className="modal-body">
           <div className="promo-content">
             <div className="promo-icon">🤖</div>
-            <h1 className="promo-title" id="promo-modal-title">CONOCE NUESTROS AGENTES</h1>
+            <h2 className="promo-title" id="promo-modal-title">CONOCE NUESTROS AGENTES</h2>
             <div className="promo-icon">🤖</div>
           </div>
           <p className="promo-subtitle">Inteligencia artificial que piensa como tú</p>
