@@ -1389,7 +1389,7 @@ body {
 
 .credits-blue {
   font-size: 16px;
-  color: #3b82f6;
+  color: #1d4ed8;
   margin-bottom: 30px;
   font-weight: 600;
 }
@@ -2312,6 +2312,8 @@ body {
   text-decoration: none;
   font-size: 14px;
   transition: color 0.3s ease;
+  display: inline-block;
+  padding: 6px 2px;
 }
 
 .footer-column ul li a:hover {
@@ -2349,6 +2351,8 @@ body {
   text-decoration: none;
   font-size: 14px;
   transition: color 0.3s ease;
+  display: inline-block;
+  padding: 6px 2px;
 }
 
 .footer-legal a:hover {
@@ -2570,6 +2574,14 @@ body {
     grid-template-columns: 1fr;
     gap: 30px;
   }
+
+  .footer-column ul li a,
+  .footer-legal a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 6px 2px;
+  }
   
   .footer-bottom {
     flex-direction: column;
@@ -2629,12 +2641,18 @@ body {
 
 .budget-modal-close {
   position: absolute;
-  top: 15px;
-  right: 20px;
+  top: 8px;
+  right: 8px;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   color: #94a3b8;
   font-size: 24px;
+  line-height: 1;
   cursor: pointer;
   transition: color 0.3s ease;
 }
@@ -2854,6 +2872,7 @@ body {
   
   .budget-modal h2 {
     font-size: 24px;
+    margin-top: 26px;
   }
   
   .form-group input {
